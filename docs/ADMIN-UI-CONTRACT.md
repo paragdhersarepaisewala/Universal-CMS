@@ -109,26 +109,26 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 |---|---|---|---|---|
 | SCR-CORE-LOGIN | Admin login | /admin/login | public | in-api |
 | SCR-CORE-DASH | Dashboard | /admin | core.dashboard.view | in-api |
-| SCR-CORE-PAGES | Pages list | /admin/pages | core.pages.view | planned |
-| SCR-CORE-PAGE-EDIT | Page content editor (blocks) | /admin/pages/:id | core.pages.edit | planned |
-| SCR-CORE-MENUS | Menus and sub-menus | /admin/menus | core.menus.view | planned |
-| SCR-CORE-MEDIA | Media library | /admin/media | core.media.view | planned |
-| SCR-CORE-THEME | Theme settings (colors, fonts, logo, favicon) | /admin/theme | core.theme.edit | planned |
-| SCR-CORE-SEO | Global and per-page SEO | /admin/seo | core.seo.view | planned |
-| SCR-CORE-REDIRECTS | Redirects | /admin/redirects | core.redirects.view | planned |
-| SCR-CORE-USERS | Users list and edit | /admin/users | core.users.view | planned |
+| SCR-CORE-PAGES | Pages list | /admin/pages | core.pages.view | in-api |
+| SCR-CORE-PAGE-EDIT | Page content editor (blocks) | /admin/pages/:id | core.pages.edit | in-api |
+| SCR-CORE-MENUS | Menus and sub-menus | /admin/menus | core.menus.view | in-api |
+| SCR-CORE-MEDIA | Media library | /admin/media | core.media.view | in-api |
+| SCR-CORE-THEME | Theme settings (colors, fonts, logo, favicon) | /admin/theme | core.theme.edit | in-api |
+| SCR-CORE-SEO | Global and per-page SEO | /admin/seo | core.seo.view | in-api |
+| SCR-CORE-REDIRECTS | Redirects | /admin/redirects | core.redirects.view | in-api |
+| SCR-CORE-USERS | Users list and edit | /admin/users | core.users.view | in-api |
 | SCR-CORE-ROLES | Roles and permission matrix | /admin/roles | core.roles.view | in-api |
-| SCR-CORE-SETTINGS | Site settings | /admin/settings | core.settings.view | planned |
+| SCR-CORE-SETTINGS | Site settings | /admin/settings | core.settings.view | in-api |
 | SCR-CORE-SMTP | SMTP setup and test send | /admin/email/smtp | core.email.settings | in-api |
 | SCR-CORE-EMAIL-TPL | Email template library | /admin/email/templates | core.email.view | in-api |
 | SCR-CORE-EMAIL-EDIT | Email template editor | /admin/email/templates/:id | core.email.edit | in-api |
 | SCR-CORE-EMAIL-AUTO | Automatic email switches | /admin/email/automation | core.email.edit | in-api |
 | SCR-CORE-EMAIL-LOG | Email log | /admin/email/log | core.email.view | in-api |
-| SCR-CORE-LEGAL | Legal pages and business details | /admin/legal | core.legal.edit | planned |
-| SCR-CORE-COOKIES | Cookie consent settings and log | /admin/cookies | core.legal.edit | planned |
+| SCR-CORE-LEGAL | Legal pages and business details | /admin/legal | core.legal.edit | in-api |
+| SCR-CORE-COOKIES | Cookie consent settings and log | /admin/cookies | core.legal.edit | in-api |
 | SCR-CORE-CACHE | Cache purge | /admin/cache | core.cache.manage | in-api |
 | SCR-CORE-MODULES | Module toggles | /admin/modules | core.modules.manage | in-api |
-| SCR-CORE-AUDIT | Audit log | /admin/logs/audit | core.logs.view | planned |
+| SCR-CORE-AUDIT | Audit log | /admin/logs/audit | core.logs.view | in-api |
 | SCR-CORE-ERRORS | Error and request logs | /admin/logs/errors | core.logs.view | planned |
 | SCR-CORE-BACKUP | Backups | /admin/backup | core.backup.manage | planned |
 
@@ -316,3 +316,4 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.5 RBAC: roles list, permission matrix update, staff invite, requirePermission/requireRole guards (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.6 Email engine: SMTP AES-256 encrypted settings, test send, 14 automation triggers, templates, queue with retry backoff, marketing unsubscribe (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.7 Cache layer: memory and file drivers, tag-based invalidation, admin cache status and purge endpoints (in-api) |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.8 Content, theme, and compliance API: pages, blocks, menus, media, SEO, redirects, India legal drafts, consent logs, site settings, and audit logging (in-api) |

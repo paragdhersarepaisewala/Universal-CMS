@@ -33,7 +33,7 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [~] Permission matrix editable in admin - belongs to client repo
 - [x] Server-side permission check on every admin route and endpoint
 - [x] Invite staff by email with a role
-- [ ] Audit log: who changed what, when, from which IP, with before and after values
+- [x] Audit log: who changed what, when, from which IP, with before and after values
 
 ### Content control (client edits everything)
 - [~] Edit headings, subheadings and body text on any page - belongs to client repo
@@ -41,26 +41,26 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [~] Replace image on any page, with alt text and crop - belongs to client repo
 - [~] Replace logo, favicon, social share image - belongs to client repo
 - [~] Manage header menu, sub-menus, footer menus, buttons and links - belongs to client repo
-- [ ] Draft, preview, publish, schedule, and revision history with rollback
-- [ ] Media library with folders, search, usage tracking, safe delete
-- [ ] Redirect manager (301 and 302)
+- [x] Draft, preview, publish, schedule, and revision history with rollback
+- [x] Media library with folders, search, usage tracking, safe delete
+- [x] Redirect manager (301 and 302)
 - [ ] Forms builder or contact form submissions inbox
 - [ ] Banners, announcement bar, popups with scheduling
-- [ ] Email templates editable (order, receipt, welcome, reset)
+- [x] Email templates editable (order, receipt, welcome, reset)
 - [ ] Blog: posts, categories, tags, authors, featured image, scheduled publish
 - [ ] Custom 404 and maintenance page editable
 
 ### SEO
-- [ ] Global SEO defaults
-- [ ] Per-page SEO: title, description, canonical, robots, Open Graph, Twitter card
+- [x] Global SEO defaults
+- [x] Per-page SEO: title, description, canonical, robots, Open Graph, Twitter card
 - [ ] Per-product SEO
 - [ ] Per-post and per-category SEO
 - [~] Structured data (Organization, Product, Article, BreadcrumbList, Donation or Event where relevant) - belongs to client repo
-- [ ] sitemap.xml generated and listed in robots.txt
-- [ ] robots.txt editable in admin
-- [ ] Google Analytics (GA4) with ID set in admin
-- [ ] Meta Pixel and Conversions API with ID set in admin
-- [ ] Header and footer script injection field with safety warning
+- [x] sitemap.xml generated and listed in robots.txt
+- [x] robots.txt editable in admin
+- [x] Google Analytics (GA4) with ID set in admin
+- [x] Meta Pixel and Conversions API with ID set in admin
+- [x] Header and footer script injection field with safety warning
 
 ### Ecommerce (if applicable)
 - [ ] Products, variants, SKUs, categories, brands, attributes
@@ -96,7 +96,7 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 
 ### Operations
 - [~] Dashboard with key numbers - belongs to client repo
-- [ ] Settings: business info, SMTP, currency, timezone, tax, invoice numbering
+- [x] Settings: business info, SMTP, currency, timezone, tax, invoice numbering
 - [~] Error and request logs viewable in admin - belongs to client repo
 - [ ] Backup and restore procedure documented and tested
 - [~] Cookie consent and privacy policy and terms pages - belongs to client repo
@@ -135,7 +135,7 @@ Templates are drafts for the client's lawyer to review. Do not claim compliance.
 - [~] Consent checkbox at signup and checkout linked to the policies, consent timestamp stored - belongs to client repo (frontend checkbox UI belongs to client repo; timestamp persistence in cms-core)
 - [~] Data export and deletion request flow for customers - belongs to client repo
 - [~] All legal pages editable in admin, versioned, with last-updated date shown - belongs to client repo
-- [ ] Legal templates marked as draft until the client confirms lawyer review
+- [x] Legal templates marked as draft until the client confirms lawyer review
 
 ### Age verification
 - [ ] Module with on and off toggle

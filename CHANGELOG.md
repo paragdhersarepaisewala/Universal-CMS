@@ -59,3 +59,14 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
     - `GET /api/v1/admin/cache`: Inspects active driver, total cached items, and registered tags.
     - `POST /api/v1/admin/cache/purge`: Supports selective tag invalidation, single key purging, and complete cache flush.
   - Route guard `requirePermission('core.cache.manage')` enforcing administrative authorization.
+- Content, Theme & Compliance API (CP2.8):
+  - Theme styling tokens management with public dictionary endpoint (`GET /api/v1/theme`) and cache invalidation.
+  - Full pages and structured content block engine supporting drafts, publishing, slug lookups, and optimistic versioning.
+  - Hierarchical menu navigation engine with location-based retrieval (`GET /api/v1/menus/:location`) and item tree mutations.
+  - Media library service providing upload rules (`GET /api/v1/admin/media/rules`), metadata tracking, and reference verification for safe deletion.
+  - Search engine optimization (SEO) suite generating dynamic XML sitemaps (`/sitemap.xml`), robots crawler protocol (`/robots.txt`), and global/entity metadata.
+  - URL redirect manager supporting 301 and 302 redirects with path resolution and hit analytics.
+  - Statutory India compliance framework seeding 8 legal policy draft templates (DPDP Act aligned drafts, Grievance Officer details, business disclosures) with explicit legal draft notices.
+  - User cookie consent logging endpoint (`POST /api/v1/cookies/consent`) and administrative consent audit viewer.
+  - General site settings API with tax, timezone, currency, invoice sequence numbers, and version conflict checks.
+  - Comprehensive administrative audit trail logging actor user ID, action, entity, before/after snapshots, and IP addresses.
