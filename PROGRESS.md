@@ -1,16 +1,22 @@
 # PROGRESS.md - Master To-Do and Progress Tracking
 
-Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped items with a reason. Never delete lines.
+Master progress tracking for Universal CMS Core (`cms-core`).
+Status Legend:
+- `[x]`: Completed with strict, literal evidence in this repository.
+- `[ ]`: Incomplete / Open item within `cms-core` scope (API, schema, background jobs, settings, tests).
+- `[~]`: Skipped with justification (frontend UI, client-specific assets, or client repo scope).
+
+---
 
 ## 1. Project start files
 
 - [~] BRIEF.md filled and approved (GATE 0) - belongs to client repo
 - [~] FEATURES.md created from section 2 plus site-type additions - belongs to client repo
 - [~] DESIGN.md created (tokens, type, spacing, components) - belongs to client repo
-- [x] PROGRESS.md created from this file (Maintained and verified with line-by-line evidence)
+- [x] PROGRESS.md created from this file (Audited and maintained in cms-core)
 - [~] `/src`, framework and backend folders do NOT exist before Gate 1 - belongs to client repo
 
-## 2. Feature inventory (PM adds missing items for the site type)
+## 2. Feature inventory
 
 ### Authentication and accounts
 - [x] Signup, login, logout (AuthService in src/auth/service.ts, Argon2id, session tokens, tested in tests/auth.test.ts)
@@ -20,17 +26,25 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [x] Session management and device list (User session tracking with IP and user-agent in src/auth/service.ts)
 - [x] 2FA for admin roles (TOTP two-factor authentication challenge and verification in AuthService)
 - [x] Login rate limiting and lockout (Failed attempts counter and lockout threshold in AuthService)
-- [~] Customer profile page: name, email, phone, password change, communication preferences - belongs to client repo
-- [~] Order history with live status and tracking link - belongs to client repo
-- [~] Receipts and invoices viewable and downloadable as PDF - belongs to client repo
-- [~] Delivery addresses: add, edit, delete, set default, used at checkout - belongs to client repo
-- [~] Donation history and receipts (donation sites) - belongs to client repo
-- [~] Reorder and return request from order history - belongs to client repo
-- [~] Account deletion and data export request - belongs to client repo
+- [ ] Customer profile API: get/update profile, phone, password change, communication preferences (cms-core)
+- [~] Customer profile page UI - belongs to client repo
+- [ ] Customer order history API: list orders, tracking link, live status (cms-core)
+- [~] Order history UI with live status and tracking link - belongs to client repo
+- [ ] Receipts and invoices PDF/printable HTML generation endpoint (cms-core)
+- [~] Receipts and invoices viewable and downloadable as PDF UI - belongs to client repo
+- [ ] Customer delivery addresses API: CRUD, default address, address table (cms-core)
+- [~] Delivery addresses UI: add, edit, delete, set default - belongs to client repo
+- [ ] Donor donation history and 80G tax receipts retrieval API (cms-core)
+- [~] Donation history and receipts UI - belongs to client repo
+- [ ] Customer reorder and return request submission API (cms-core)
+- [~] Reorder and return request UI from order history - belongs to client repo
+- [ ] Account deletion and personal data export (DPDP Act) request API (cms-core)
+- [~] Account deletion and data export request UI - belongs to client repo
 
 ### Roles and permissions
 - [x] Roles: owner, admin, manager, editor, support, customer (Default roles in src/rbac/definitions.ts)
-- [~] Permission matrix editable in admin - belongs to client repo
+- [ ] Permission matrix editable in admin API (cms-core)
+- [~] Permission matrix editor UI in admin - belongs to client repo
 - [x] Server-side permission check on every admin route and endpoint (requirePermission middleware in src/rbac/middleware.ts, tested in tests/rbac.test.ts)
 - [x] Invite staff by email with a role (POST /api/v1/admin/users/invite in src/routes/admin/rbac.ts)
 - [x] Audit log: who changed what, when, from which IP, with before and after values (AuditService in src/content/audit.ts, tested in tests/content.test.ts)
@@ -55,64 +69,76 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [x] Per-page SEO: title, description, canonical, robots, Open Graph, Twitter card (SeoService getEntitySeo/setEntitySeo for pages, tested in tests/content.test.ts)
 - [x] Per-product SEO (SeoService getEntitySeo/setEntitySeo for product, public /api/v1/seo/product/:id and admin /api/v1/admin/seo/entity, tested in tests/news-portal.test.ts)
 - [x] Per-post and per-category SEO (SeoService getEntitySeo/setEntitySeo for post and category, public /api/v1/seo/post/:id and admin /api/v1/admin/seo/entity, tested in tests/news-portal.test.ts)
-- [~] Structured data (Organization, Product, Article, BreadcrumbList, Donation or Event where relevant) - belongs to client repo
+- [ ] Structured data JSON-LD metadata generation API / helpers (cms-core)
+- [~] Structured data injection into frontend HTML - belongs to client repo
 - [x] sitemap.xml generated and listed in robots.txt (GET /api/v1/sitemap.xml and GET /api/v1/robots.txt, tested in tests/content.test.ts)
 - [x] robots.txt editable in admin (SeoService updateGlobalSeo with custom robots.txt, tested in tests/content.test.ts)
 - [x] Google Analytics (GA4) with ID set in admin (SeoService googleAnalyticsId setting, tested in tests/content.test.ts)
-- [x] Meta Pixel and Conversions API with ID set in admin (SeoService metaPixelId setting, tested in tests/content.test.ts)
+- [ ] Meta Conversions API (CAPI) server-side event dispatch (metaPixelId setting saved; server-side CAPI event dispatch pending)
 - [x] Header and footer script injection field with safety warning (SeoService headerScripts and footerScripts, tested in tests/content.test.ts)
 
 ### Ecommerce (if applicable)
 - [x] Products, variants, SKUs, categories, brands, attributes (StoreService, /api/v1/store/products, /api/v1/admin/store/products, tested in tests/store.test.ts)
-- [x] Inventory with low-stock alerts, stock history, bulk import and export (StoreService stock quantity and low stock threshold, tested in tests/store.test.ts)
+- [ ] Inventory stock history and bulk import/export (quantity and low-stock threshold implemented; history table and bulk CSV import/export pending)
 - [x] Cart, guest and logged-in checkout (POST /api/v1/store/cart/quote, POST /api/v1/store/checkout, tested in tests/store.test.ts)
 - [x] Coupons and discount rules (StoreService coupon validation, percentage, fixed, min order, tested in tests/store.test.ts)
-- [x] Orders: status flow, notes, partial fulfilment, cancellations, returns, refunds (/api/v1/admin/store/orders, status update, tested in tests/store.test.ts)
-- [x] Razorpay with signature verification and webhooks (idempotent) (POST /api/v1/store/checkout/razorpay/verify, HMAC SHA-256, tested in tests/store.test.ts)
-- [x] Cash on delivery with rules (pincode, order value, fee) (cod payment method support, tested in tests/store.test.ts)
-- [~] Multiple shipping partners via adapter interface, rate and serviceability checks, AWB and tracking - belongs to client repo
-- [x] GST tax configuration and GST invoices, credit notes (18% tax calculation in cart quote, tested in tests/store.test.ts)
-- [x] Order and shipping emails, abandoned cart emails (job queue notification on order create, tested in tests/store.test.ts)
-- [~] Customer management: list, segments, notes, order history, export - belongs to client repo
+- [ ] Orders: partial fulfilment, return requests, and refund processing (basic status flow and notes implemented; returns, refunds, and partial fulfilment pending)
+- [ ] Razorpay webhooks with idempotency and event handling (signature verification done, webhook route and idempotency pending)
+- [ ] Cash on delivery rules: pincode serviceability, max order value, and COD fee calculation (COD payment method accepted; rule engine pending)
+- [ ] Multiple shipping partners adapter interface, rate and serviceability checks, AWB and tracking updates (cms-core)
+- [~] Shipping partner frontend integration and customer tracking view - belongs to client repo
+- [ ] GST tax configuration, formal GST invoices, and credit notes (18% cart calculation implemented; invoice generation, PDF, and credit notes pending)
+- [ ] Abandoned cart detection job and per-email on/off switches (order confirmation job enqueued; abandoned cart detector and email switches pending)
+- [ ] Admin customer management API: list, segments, notes, order history, CSV export (cms-core)
+- [~] Admin customer management UI - belongs to client repo
 - [x] Reviews and ratings with moderation (StoreService reviews, moderation workflow, tested in tests/store.test.ts)
-- [~] Wishlist - belongs to client repo
-- [~] Meta catalog feed - belongs to client repo
+- [ ] Wishlist API: add, remove, and list customer wishlist items (cms-core)
+- [~] Wishlist storefront UI - belongs to client repo
+- [ ] Meta catalog product feed XML/CSV endpoint (cms-core)
+- [~] Meta catalog business manager setup - belongs to client repo
 
 ### Donation (if applicable)
 - [x] Campaigns with goal, progress bar, updates, images (DonationService, /api/v1/donations/campaigns, progressPercentage calculation, tested in tests/donations.test.ts)
-- [x] One-time and recurring donations via Razorpay (POST /api/v1/donations/donate, tested in tests/donations.test.ts)
+- [ ] Recurring donations via Razorpay subscriptions (one-time donations implemented; subscription plans and recurring webhooks pending)
 - [x] Donor management and anonymous donation option (isAnonymous masking support, tested in tests/donations.test.ts)
 - [x] Automatic receipts with required tax-exemption fields where applicable (Indian 80G tax receipt number format and PAN capture, tested in tests/donations.test.ts)
 - [x] Reports and CSV export, reconciliation with Razorpay (GET /api/v1/admin/donations/contributions, tested in tests/donations.test.ts)
-- [~] Thank-you page and email - belongs to client repo (page UI belongs to client repo; transactional email engine in cms-core)
+- [ ] Automated thank-you transactional email dispatch on donation completion (cms-core)
+- [~] Thank-you page UI - belongs to client repo
 
 ### News portal (if applicable)
 - [x] Articles with drafts, revisions, scheduling, breaking and featured flags (BlogService with draft/published/scheduled/archived statuses, version revisions, isBreaking and isFeatured flags, tested in tests/blog.test.ts and tests/news-portal.test.ts)
-- [~] Categories, tags, authors with profile pages - belongs to client repo (author profile pages UI belong to client repo; API in cms-core)
-- [x] Editorial workflow (writer, editor, publisher) (Role-based permissions blog.posts.view, blog.posts.edit enforced in admin blog routes)
+- [ ] Author profile API with published articles list (cms-core)
+- [~] Author profile frontend pages - belongs to client repo
+- [ ] Multi-stage editorial workflow state machine (roles and permissions mapped; formal submission/approval/publish state transitions pending)
 - [x] RSS feeds and news sitemap (GET /api/v1/blog/rss.xml and GET /api/v1/blog/news-sitemap.xml with Google News schema, tested in tests/news-portal.test.ts)
 - [x] Ad slot management (GET /api/v1/ad-slots/:location, GET and PUT /api/v1/admin/ad-slots/:location, tested in tests/news-portal.test.ts)
 - [x] Related articles and site search (GET /api/v1/blog/posts/:slug/related and GET /api/v1/blog/posts?q=... search query param, tested in tests/news-portal.test.ts)
 
 ### Operations
-- [~] Dashboard with key numbers - belongs to client repo
+- [ ] Admin dashboard statistics API: counts, revenue, pending orders, traffic metrics (cms-core)
+- [~] Admin dashboard UI charts and widgets - belongs to client repo
 - [x] Settings: business info, SMTP, currency, timezone, tax, invoice numbering (SettingsService in src/content/settings.ts, tested in tests/content.test.ts)
-- [~] Error and request logs viewable in admin - belongs to client repo
+- [ ] Request and system error logs retrieval API (cms-core)
+- [~] Error and request logs viewer in admin UI - belongs to client repo
 - [x] Backup and restore procedure documented and tested (src/scripts/backup.ts, src/scripts/restore.ts, npm run db:backup, npm run db:restore, docs/BACKUP.md, tested in tests/backup.test.ts)
 - [~] Cookie consent and privacy policy and terms pages - belongs to client repo
 - [x] Health check endpoint (GET /api/v1/health with DB status and uptime, tested in tests/health.test.ts)
 
 ### Email and SMTP
-- [~] SMTP settings screen (host, port, security, username, password stored encrypted, from name, from address, reply-to) - belongs to client repo
-- [~] Connection test and test-send button with clear error messages - belongs to client repo
+- [x] SMTP settings management API with encrypted password storage (Settings stored encrypted with AES-256-GCM, GET / PUT /api/v1/admin/email/smtp)
+- [~] SMTP settings screen UI - belongs to client repo
+- [x] SMTP connection test and test-send API endpoint (POST /api/v1/admin/email/smtp/test, tested in tests/email.test.ts)
+- [~] Connection test and test-send button UI - belongs to client repo
 - [x] Email queue with retry, backoff and failure log (EmailQueueService in src/email/service.ts, tested in tests/email.test.ts)
-- [~] Email log in admin: recipient, event, status, time, resend - belongs to client repo
+- [ ] Email log retrieval and resend API endpoints (cms-core)
+- [~] Email log viewer and resend button UI in admin - belongs to client repo
 - [~] Email studio: visual theme-based template editor with desktop and mobile preview - belongs to client repo
 - [~] Editable blocks: logo, header, heading, text, image, button, product list, order table, footer, social links - belongs to client repo
 - [~] Variable picker (customer name, order number, items, totals, address, receipt link, reset link, etc.) - belongs to client repo
 - [~] Send-test-to-myself, version history, reset to theme default - belongs to client repo
 - [~] Raw HTML and CSS mode restricted to the owner role (optional advanced mode) - belongs to client repo
-- [x] Automatic emails each with an on and off switch and editable subject: welcome, verify email, password reset, order placed, payment received, shipped, delivered, cancelled, refund, invoice, abandoned cart, donation receipt, admin new order, admin low stock (Template management in src/email/templates.ts, tested in tests/email.test.ts)
+- [ ] Per-email on/off toggle switches and subject editors (templates seeded and editable; individual event toggle switches pending)
 - [x] Marketing emails include unsubscribe; transactional emails do not depend on marketing consent (Unsubscribe token validation, tested in tests/email.test.ts)
 - [~] Email layouts tested in common clients with inline CSS and table layout - belongs to client repo
 - [~] SPF, DKIM and DMARC setup steps documented for the client's domain - belongs to client repo
@@ -132,8 +158,9 @@ Templates are drafts for the client's lawyer to review. Do not claim compliance.
 - [~] Donation sites: donation terms, refund policy, tax-exemption details - belongs to client repo
 - [~] News sites: editorial policy, corrections policy, disclaimer - belongs to client repo
 - [~] Policy pages linked in the footer and at checkout, and present before payment gateway onboarding (Razorpay asks for privacy, terms, refund, shipping and contact pages) - belongs to client repo
-- [~] Consent checkbox at signup and checkout linked to the policies, consent timestamp stored - belongs to client repo (frontend checkbox UI belongs to client repo; timestamp persistence in cms-core)
-- [~] Data export and deletion request flow for customers - belongs to client repo
+- [~] Consent checkbox at signup and checkout linked to the policies, consent timestamp stored - belongs to client repo
+- [ ] DPDP customer data export and deletion request processing API (cms-core)
+- [~] Customer data export and deletion request flow UI - belongs to client repo
 - [~] All legal pages editable in admin, versioned, with last-updated date shown - belongs to client repo
 - [x] Legal templates marked as draft until the client confirms lawyer review (Seeded legal templates with disclaimer notices in src/content/compliance.ts)
 
@@ -212,7 +239,7 @@ Quality rules:
 ## 4. Testing
 
 - [x] Unit tests for business logic (tax, totals, discounts, permissions, receipts) (Tested in tests/store.test.ts, tests/donations.test.ts, tests/rbac.test.ts)
-- [x] API tests for every endpoint, including a denied case for each protected role boundary (17 test files, 119 tests covering 403 denied cases in tests/rbac.test.ts, tests/cache.test.ts, etc.)
+- [x] API tests for every endpoint, including a denied case for each protected role boundary (18 test files, 126 tests covering 403 denied cases in tests/rbac.test.ts, tests/cache.test.ts, etc.)
 - [~] Playwright end-to-end: signup with email verification, login, purchase or donation, admin edit reflected on site - belongs to client repo
 - [x] Email tests: templates render with sample data, variables resolved, links valid, test-send works (14 tests in tests/email.test.ts)
 - [x] Module toggle tests: disabled modules expose nothing (Tested in tests/modules.test.ts)
@@ -222,7 +249,7 @@ Quality rules:
 - [~] Accessibility checks (axe) with no serious issues - belongs to client repo
 - [~] SEO tests: titles, descriptions, canonicals, h1 count, structured data validity, robots and sitemap reachable - belongs to client repo
 - [x] Payment tests in Razorpay test mode including failure and webhook retry (StoreService.verifyRazorpaySignature with HMAC-SHA256 verification and order payment reconciliation, tested in tests/store.test.ts)
-- [x] Test report stored in `/reports` (Stored in reports/test-report.md with 119 passing tests across 17 suites)
+- [x] Test report stored in `/reports` (Stored in reports/test-report.md with 126 passing tests across 18 suites)
 
 ## 5. Performance (Phase 6)
 
@@ -231,33 +258,33 @@ Performance 90 or higher, Accessibility 95 or higher, Best Practices 95 or highe
 
 - [~] Server-side rendering on all public pages - belongs to client repo
 - [x] Compress API payloads (gzip or brotli) and return only needed fields (@fastify/compress plugin configured in src/app.ts)
-- [x] Optimize database queries (EXPLAIN reviewed, indexes added, N+1 removed) (Indexes on foreign keys, lookup slugs, and composite queries in src/db/schema.ts)
+- [ ] Formal MySQL EXPLAIN query plan review and documentation (indexes declared in schema; EXPLAIN benchmark documentation pending)
 - [x] Database connection pooling configured and sized for the Hostinger limit (Configured via DB_POOL_SIZE=5 in src/db/pool.ts, tested in tests/db-pool.test.ts)
 - [x] Paginate all large lists (API and admin) (Pagination with page, perPage, and meta totals on blog posts, store products, forms submissions, audit logs)
 - [~] Fix unnecessary re-renders - belongs to client repo
-- [x] Fix memory leaks (listeners, timers, subscriptions, GSAP and Lenis cleanup, server-side) (Stateless request handlers, safe connection release, no lingering in-process intervals)
+- [ ] Server-side memory leak profiling under load (stateless handlers implemented; heap allocation profiling report pending)
 - [~] Optimize fonts (subset, self-host, preload, font-display swap) - belongs to client repo
 - [~] Split code into chunks, lazy-load heavy modules (3D, Vanta, charts, editors) - belongs to client repo
 - [~] Reduce bundle size, analyze and attach report - belongs to client repo
-- [x] Remove unused dependencies (Clean package.json verified with eslint)
+- [ ] Dedicated unused dependency audit with depcheck (eslint passed; formal depcheck audit pending)
 - [~] Remove unnecessary network requests and duplicate fetches - belongs to client repo
 - [~] Defer non-critical scripts, remove render-blocking resources - belongs to client repo
 - [~] Debounce input handlers (search, filters, autosave) - belongs to client repo
 - [x] Cache expensive computations (CacheManager getOrSet for settings, menus, and theme tokens)
 - [x] Server-side caching with correct invalidation on admin edits (Tag-based cache invalidation on page, menu, theme, and settings updates)
 - [~] Minify JS and CSS - belongs to client repo
-- [x] Images converted to lossless WebP with responsive sizes and dimensions set (MediaService handles WebP metadata and dimensions)
-- [x] Faster server response (TTFB measured and recorded) (Fastify sub-millisecond route dispatch and connection pooling)
-- [x] Server-side logging with levels and rotation (Fastify Pino structured logging with configurable log levels)
+- [ ] Server-side image transformation to WebP and responsive dimensions generation (mime validation and dimensions metadata implemented; sharp/libvips processing pending)
+- [ ] TTFB benchmark measurement and recording under load (connection pooling and Fastify dispatch implemented; formal latency benchmark report pending)
+- [ ] File-based log rotation configuration (Fastify Pino logging with levels implemented; file log rotation pending)
 - [~] Lighthouse audit run and report saved - belongs to client repo
 
 ## 6. Security
 
-- [x] Input validation on every endpoint, output escaping, CSRF protection (Strict @sinclair/typebox JSON schemas on every route, parameterized queries, and Bearer token auth)
+- [ ] Complete double-submit CSRF protection for cookie transport (TypeBox validation and cookie custom header check implemented; tokenized CSRF middleware pending)
 - [x] Parameterized queries only (Drizzle ORM prepared SQL statements and zero raw string interpolation)
-- [x] File upload type and size validation (MediaService allowed MIME types and max size validation)
+- [x] File upload type and size validation (MediaService allowed MIME types and max size validation, tested in tests/security-audit.test.ts)
 - [x] Secure headers and HTTPS-only cookies (@fastify/helmet security headers configured in src/app.ts)
-- [x] Razorpay webhook signature verification, amount re-verified server-side (StoreService.verifyRazorpaySignature with crypto HMAC-SHA256)
+- [x] Razorpay webhook signature verification, amount re-verified server-side (StoreService.verifyRazorpaySignature with crypto HMAC-SHA256, tested in tests/store.test.ts)
 - [x] Rate limiting on auth, checkout and form endpoints (@fastify/rate-limit configured in src/app.ts)
 - [x] Secrets only in `.env`, none in git history (All secrets via process.env and .env.example, git history clean)
 - [x] Dependency audit run (npm audit verified)
@@ -265,10 +292,10 @@ Performance 90 or higher, Accessibility 95 or higher, Best Practices 95 or highe
 
 ## 7. Deployment and handover
 
-- [x] Local run instructions tested from a clean clone (Documented in README.md with npm run build, migrate, seed, and dev)
+- [ ] Local run instructions validated from an automated clean clone test (documented in README; clean clone CI run pending)
 - [~] Hostinger staging deployment completed - belongs to client repo
 - [x] Environment variables documented (Documented in .env.example and README.md)
-- [x] Cron jobs documented (scheduled posts, abandoned carts, backups) (Documented in README.md, AGENTS.md, and docs/BACKUP.md for Hostinger cPanel cron)
+- [ ] Execution route /api/v1/jobs/process for cron trigger (cron documented in README and docs/BACKUP.md; HTTP process endpoint implementation pending)
 - [x] Backup and restore tested (src/scripts/backup.ts, src/scripts/restore.ts, docs/BACKUP.md, tested in tests/backup.test.ts)
 - [~] SSL, DNS, redirects www to non-www (or reverse) confirmed - belongs to client repo
 - [~] Admin user guide and role guide written - belongs to client repo

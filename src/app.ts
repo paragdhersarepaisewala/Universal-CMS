@@ -15,6 +15,8 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     logger: {
       level: process.env.NODE_ENV === 'test' ? 'silent' : 'info',
     },
+    // Trust Hostinger reverse proxy (Passenger / Nginx) to retrieve real client IP
+    trustProxy: process.env.TRUST_PROXY !== 'false',
     ...opts,
   });
 
@@ -40,7 +42,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     timeWindow: '1 minute',
   });
 
-  // Configure OpenAPI Swagger generation
+  // Configure OpenAPI Swagger specification generator
   app.register(swagger, {
     openapi: {
       openapi: '3.0.3',
@@ -67,27 +69,42 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     },
   });
 
-  // Swagger UI documentation endpoint
-  app.register(swaggerUi, {
-    routePrefix: '/api/v1/docs',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: false,
-    },
-    staticCSP: false,
-  });
+  const isSwaggerEnabled = process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true';
 
-  // Ensure /api/v1/docs redirects to /api/v1/docs/ with trailing slash so relative static assets load properly
-  app.addHook('onRequest', async (req, reply) => {
-    if (req.url === '/api/v1/docs') {
-      return reply.redirect(301, '/api/v1/docs/');
-    }
-  });
+  if (isSwaggerEnabled) {
+    // Swagger UI documentation endpoint (disabled in production unless ENABLE_SWAGGER=true)
+    app.register(swaggerUi, {
+      routePrefix: '/api/v1/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: false,
+      },
+      staticCSP: false,
+    });
 
-  // Export openapi.json route directly
-  app.get('/api/v1/openapi.json', { schema: { hide: true } }, async (_req, reply) => {
-    return reply.send(app.swagger());
-  });
+    // Ensure /api/v1/docs redirects to /api/v1/docs/ with trailing slash so relative static assets load properly
+    app.addHook('onRequest', async (req, reply) => {
+      if (req.url === '/api/v1/docs') {
+        return reply.redirect(301, '/api/v1/docs/');
+      }
+    });
+
+    // Export openapi.json route directly
+    app.get('/api/v1/openapi.json', { schema: { hide: true } }, async (_req, reply) => {
+      return reply.send(app.swagger());
+    });
+  } else {
+    // Return 404 in production when swagger docs are disabled
+    app.get('/api/v1/docs', async (_req, reply) => {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'API documentation is disabled in production' } });
+    });
+    app.get('/api/v1/docs/*', async (_req, reply) => {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'API documentation is disabled in production' } });
+    });
+    app.get('/api/v1/openapi.json', async (_req, reply) => {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'API documentation is disabled in production' } });
+    });
+  }
 
   // Register /api/v1 routes
   app.register(v1Routes, { prefix: '/api/v1' });

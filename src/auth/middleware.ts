@@ -7,10 +7,15 @@ declare module 'fastify' {
   }
 }
 
-export function extractToken(request: FastifyRequest): string | null {
+export interface ExtractedToken {
+  token: string;
+  source: 'bearer' | 'cookie';
+}
+
+export function extractToken(request: FastifyRequest): ExtractedToken | null {
   const authHeader = request.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7).trim();
+    return { token: authHeader.substring(7).trim(), source: 'bearer' };
   }
 
   // Also check session cookie if available
@@ -18,7 +23,7 @@ export function extractToken(request: FastifyRequest): string | null {
   if (cookieHeader) {
     const match = cookieHeader.match(/session=([^;]+)/);
     if (match && match[1]) {
-      return match[1].trim();
+      return { token: match[1].trim(), source: 'cookie' };
     }
   }
 
@@ -26,14 +31,33 @@ export function extractToken(request: FastifyRequest): string | null {
 }
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const token = extractToken(request);
-  if (!token) {
+  const extracted = extractToken(request);
+  if (!extracted) {
     return reply.status(401).send({
       error: {
         code: 'UNAUTHENTICATED',
         message: 'Authentication required. Please provide a valid session token.',
       },
     });
+  }
+
+  const { token, source } = extracted;
+
+  // CSRF Defense for cookie-based transport on state-changing HTTP methods
+  if (source === 'cookie' && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method.toUpperCase())) {
+    const customHeader = request.headers['x-requested-with'] || request.headers['x-csrf-token'] || request.headers['x-cms-client'];
+    const origin = request.headers['origin'];
+    const host = request.headers['host'];
+
+    const isSameOrigin = origin && host && origin.includes(host);
+    if (!customHeader && !isSameOrigin) {
+      return reply.status(403).send({
+        error: {
+          code: 'CSRF_VALIDATION_FAILED',
+          message: 'Cross-Site Request Forgery protection: State-changing requests using cookie authentication must include custom header (X-Requested-With or X-CSRF-Token).',
+        },
+      });
+    }
   }
 
   if (token.startsWith('cms_live_')) {

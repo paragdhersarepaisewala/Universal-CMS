@@ -260,9 +260,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       },
     },
     async (request, reply) => {
-      const token = extractToken(request);
-      if (token) {
-        await authService.logout(token);
+      const extracted = extractToken(request);
+      if (extracted) {
+        await authService.logout(extracted.token);
       }
       return reply.send({ data: { success: true } });
     }

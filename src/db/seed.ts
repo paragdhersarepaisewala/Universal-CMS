@@ -86,6 +86,15 @@ export async function runSeed(): Promise<void> {
     );
 
     if (userRows.length === 0) {
+      if (process.env.NODE_ENV === 'production') {
+        const password = config.seed.ownerPassword;
+        if (!password || password === 'ChangeMe123!' || password.length < 12) {
+          throw new Error(
+            'Production seeding error: SEED_OWNER_PASSWORD must be explicitly set via environment variables and must be at least 12 characters long in production.'
+          );
+        }
+      }
+
       console.log(`[Seed] Creating initial owner account (${config.seed.ownerEmail})...`);
       const passwordHash = await hashPassword(config.seed.ownerPassword);
 

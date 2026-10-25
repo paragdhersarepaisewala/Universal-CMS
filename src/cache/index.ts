@@ -17,7 +17,7 @@ class CacheManager {
   private driver: CacheDriver;
 
   constructor() {
-    const driverType = process.env.CACHE_DRIVER || 'memory';
+    const driverType = process.env.CACHE_DRIVER || (process.env.NODE_ENV === 'production' ? 'file' : 'memory');
     if (driverType === 'file') {
       const dir = process.env.CACHE_FILE_DIR || './.cache';
       this.driver = new FileCacheDriver(dir);
