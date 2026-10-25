@@ -6,6 +6,8 @@ import { moduleRegistry } from '../registry.js';
 import { safeTimingCompare, getPaymentGateway } from './payment-gateway.js';
 import { canTransition, isMonotonicRegression, OrderStatus, OrderKind } from './state-machine.js';
 import { fulfilmentRegistry } from './fulfilment.js';
+import { TaxEngine, QuoteCalculationResult } from './tax.js';
+import { InvoiceService } from './invoice.js';
 
 export interface ProductRecord {
   id: number;
@@ -25,6 +27,8 @@ export interface ProductRecord {
   status: 'draft' | 'active' | 'archived';
   isAgeRestricted: boolean;
   featuredImageId?: number | null;
+  taxClassId?: number | null;
+  hsnCode?: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -63,10 +67,20 @@ export interface OrderRecord {
   paymentMethod: 'razorpay' | 'cod';
   paymentStatus: 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded';
   paymentId?: string | null;
+  invoiceId?: number | null;
+  placeOfSupplyState?: string | null;
+  buyerGstin?: string | null;
   subtotal: number;
   taxTotal: number;
   shippingTotal: number;
   discountTotal: number;
+  codFeePaise?: number;
+  codFeeTaxPaise?: number;
+  cgstPaise?: number;
+  sgstPaise?: number;
+  utgstPaise?: number;
+  igstPaise?: number;
+  cessPaise?: number;
   total: number;
   currency: string;
   shippingAddress?: Record<string, unknown> | null;
@@ -104,6 +118,7 @@ export interface CreateOrderParams {
   shippingAddress?: Record<string, unknown>;
   billingAddress?: Record<string, unknown>;
   billingState?: string;
+  buyerGstin?: string;
   couponCode?: string;
   notes?: string;
   idempotencyKey?: string;
@@ -471,6 +486,60 @@ export class StoreService {
     return { subtotal, discountTotal, shippingTotal, taxTotal, total };
   }
 
+  // 6b. Advanced Cart Quote (Full GST Breakdown & COD Rules)
+  static async quoteCart(params: {
+    items: Array<{ productId: number; quantity: number; title?: string; price?: number }>;
+    couponCode?: string;
+    shippingAmount?: number;
+    placeOfSupplyState?: string;
+    shippingPincode?: string;
+    paymentMethod?: string;
+  }): Promise<QuoteCalculationResult> {
+    const connection = await pool.getConnection();
+    try {
+      const productIds = params.items.map((i) => i.productId);
+      const [rows] = await connection.query<RowDataPacket[]>(
+        'SELECT id, name, sku, price, tax_class_id, hsn_code FROM products WHERE id IN (?)',
+        [productIds.length > 0 ? productIds : [0]]
+      );
+      const prodMap = new Map<number, RowDataPacket>();
+      rows.forEach((r) => prodMap.set(Number(r.id), r));
+
+      const enrichedItems = params.items.map((it) => {
+        const p = prodMap.get(it.productId);
+        return {
+          productId: it.productId,
+          title: p?.name || it.title || 'Product',
+          sku: p?.sku || null,
+          price: p ? Number(p.price) : it.price || 0,
+          quantity: it.quantity,
+          taxClassId: p?.tax_class_id ? Number(p.tax_class_id) : null,
+          hsnCode: p?.hsn_code || null,
+        };
+      });
+
+      let couponDiscount = 0;
+      if (params.couponCode) {
+        const rawSubtotal = enrichedItems.reduce((acc, it) => acc + it.price * it.quantity, 0);
+        const check = await this.validateCoupon(params.couponCode, rawSubtotal, connection);
+        if (check.valid) {
+          couponDiscount = check.discountAmount;
+        }
+      }
+
+      return await TaxEngine.calculateOrderTaxes({
+        items: enrichedItems,
+        placeOfSupplyState: params.placeOfSupplyState,
+        shippingPincode: params.shippingPincode,
+        shippingAmount: params.shippingAmount,
+        couponDiscount,
+        paymentMethod: params.paymentMethod,
+      });
+    } finally {
+      connection.release();
+    }
+  }
+
   // 7. Atomic Checkout Engine (H2.1 Core)
   static async checkout(params: CreateOrderParams): Promise<{ order: OrderRecord; gatewayOrder?: any }> {
     return withDeadlockRetry(async () => {
@@ -695,45 +764,78 @@ export class StoreService {
           }
         }
 
-        // 5. Compute server totals in integer paise
-        const quote = this.calculateTotals({
-          items: validatedItems.map((i) => ({ price: i.unitPrice, quantity: i.quantity })),
+        // 5. Compute server totals and tax breakdown using TaxEngine
+        const storeSettings = await TaxEngine.getStoreSettings();
+        const shippingPincode =
+          (params.shippingAddress as any)?.pincode ||
+          (params.shippingAddress as any)?.postalCode ||
+          null;
+
+        const quote = await TaxEngine.calculateOrderTaxes({
+          items: validatedItems.map((i) => ({
+            productId: Number(i.product.id),
+            title: i.product.name,
+            sku: i.product.sku,
+            price: i.unitPrice,
+            quantity: i.quantity,
+            taxClassId: i.product.tax_class_id ? Number(i.product.tax_class_id) : null,
+            hsnCode: i.product.hsn_code || null,
+          })),
+          placeOfSupplyState: billingState,
+          shippingPincode,
+          shippingAmount: 0,
           couponDiscount,
+          paymentMethod: params.paymentMethod,
         });
 
         // 6. Generate unique order number (concurrency safe)
         const orderNumber = `ORD-${Date.now()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 
-        // 7. Calculate expiry: online orders expire after configured minutes (default 30), COD skips expiry
+        // 7. Calculate status & expiry:
+        // COD skips payment expiry; if codRequiresConfirmation is false, COD starts confirmed immediately
+        const isCod = params.paymentMethod === 'cod';
+        const initialStatus: OrderStatus = isCod
+          ? storeSettings.codRequiresConfirmation ? 'pending_payment' : 'confirmed'
+          : 'pending_payment';
+
         const expiryMinutes = Number(process.env.STORE_ORDER_EXPIRY_MINUTES || 30);
-        const expiresAt =
-          params.paymentMethod === 'cod'
-            ? null
-            : new Date(Date.now() + expiryMinutes * 60 * 1000);
+        const expiresAt = isCod ? null : new Date(Date.now() + expiryMinutes * 60 * 1000);
 
         const payloadHash = params.idempotencyKey
           ? createHash('sha256').update(JSON.stringify(params.rawPayload || params)).digest('hex')
           : null;
 
-        // 8. Insert Order Record
+        // 8. Insert Order Record with full GST breakdown
         const [orderInsert] = await connection.query<ResultSetHeader>(
           `INSERT INTO orders (
             order_number, customer_id, customer_email, status, order_kind,
-            payment_method, payment_status, subtotal, tax_total, shipping_total,
-            discount_total, total, currency, shipping_address, billing_address,
+            payment_method, payment_status, place_of_supply_state, buyer_gstin,
+            subtotal, tax_total, shipping_total, discount_total, cod_fee_paise,
+            cod_fee_tax_paise, cgst_paise, sgst_paise, utgst_paise, igst_paise,
+            cess_paise, total, currency, shipping_address, billing_address,
             billing_state, notes, idempotency_key, idempotency_payload_hash,
             expires_at
-          ) VALUES (?, ?, ?, 'pending_payment', ?, ?, 'pending', ?, ?, ?, ?, ?, 'INR', ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'INR', ?, ?, ?, ?, ?, ?, ?)`,
           [
             orderNumber,
             params.customerId || null,
             params.customerEmail,
+            initialStatus,
             orderKind,
             params.paymentMethod,
+            quote.placeOfSupplyState,
+            params.buyerGstin || null,
             quote.subtotal,
             quote.taxTotal,
             quote.shippingTotal,
             quote.discountTotal,
+            quote.codFeePaise,
+            quote.codFeeTaxPaise,
+            quote.cgstPaise,
+            quote.sgstPaise,
+            quote.utgstPaise,
+            quote.igstPaise,
+            quote.cessPaise,
             quote.total,
             params.shippingAddress ? JSON.stringify(params.shippingAddress) : null,
             params.billingAddress ? JSON.stringify(params.billingAddress) : null,
@@ -754,14 +856,17 @@ export class StoreService {
           orderId,
         ]);
 
-        // 9. Insert Order Items
-        for (const line of validatedItems) {
-          const lineTotal = line.unitPrice * line.quantity;
+        // 9. Insert Order Items with GST tax metadata
+        for (let idx = 0; idx < validatedItems.length; idx++) {
+          const line = validatedItems[idx];
+          const lineTax = quote.lines[idx];
           await connection.query(
             `INSERT INTO order_items (
               order_id, product_id, variant_id, product_type, fulfilment_status,
-              title, sku, price, quantity, total
-            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
+              title, sku, price, quantity, tax_class_id, hsn_code,
+              tax_rate_basis_points, taxable_amount_paise, cgst_paise, sgst_paise,
+              utgst_paise, igst_paise, cess_paise, total
+            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               orderId,
               line.product.id,
@@ -771,7 +876,16 @@ export class StoreService {
               line.product.sku || null,
               line.unitPrice,
               line.quantity,
-              lineTotal,
+              lineTax?.taxClassId || null,
+              lineTax?.hsnCode || '9900',
+              lineTax?.taxRateBasisPoints || 0,
+              lineTax?.taxableAmountPaise || line.unitPrice * line.quantity,
+              lineTax?.cgstPaise || 0,
+              lineTax?.sgstPaise || 0,
+              lineTax?.utgstPaise || 0,
+              lineTax?.igstPaise || 0,
+              lineTax?.cessPaise || 0,
+              lineTax?.lineTotalPaise || line.unitPrice * line.quantity,
             ]
           );
         }
@@ -780,8 +894,8 @@ export class StoreService {
         await connection.query(
           `INSERT INTO order_status_history (
             order_id, from_status, to_status, actor, reason
-          ) VALUES (?, 'none', 'pending_payment', ?, 'Order created via checkout')`,
-          [orderId, params.customerId ? `user_${params.customerId}` : 'guest']
+          ) VALUES (?, 'none', ?, ?, 'Order created via checkout')`,
+          [orderId, initialStatus, params.customerId ? `user_${params.customerId}` : 'guest']
         );
 
         // 11. Create Gateway Order if online payment
@@ -810,6 +924,13 @@ export class StoreService {
           ]);
         }
 
+        // 12. If COD and confirmed immediately, generate tax invoice
+        let invoiceId: number | null = null;
+        if (isCod && initialStatus === 'confirmed') {
+          const inv = await InvoiceService.generateInvoice(orderId, connection);
+          invoiceId = inv.id;
+        }
+
         await connection.commit();
 
         const createdOrder: OrderRecord = {
@@ -817,15 +938,25 @@ export class StoreService {
           orderNumber,
           customerId: params.customerId || null,
           customerEmail: params.customerEmail,
-          status: 'pending_payment',
+          status: initialStatus,
           orderKind,
           paymentMethod: params.paymentMethod,
           paymentStatus: 'pending',
           paymentId: gatewayOrder?.gatewayOrderId || null,
+          invoiceId,
+          placeOfSupplyState: quote.placeOfSupplyState,
+          buyerGstin: params.buyerGstin || null,
           subtotal: quote.subtotal,
           taxTotal: quote.taxTotal,
           shippingTotal: quote.shippingTotal,
           discountTotal: quote.discountTotal,
+          codFeePaise: quote.codFeePaise,
+          codFeeTaxPaise: quote.codFeeTaxPaise,
+          cgstPaise: quote.cgstPaise,
+          sgstPaise: quote.sgstPaise,
+          utgstPaise: quote.utgstPaise,
+          igstPaise: quote.igstPaise,
+          cessPaise: quote.cessPaise,
           total: quote.total,
           currency: 'INR',
           shippingAddress: params.shippingAddress || null,
@@ -838,14 +969,14 @@ export class StoreService {
           version: 1,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          items: validatedItems.map((i) => ({
+          items: validatedItems.map((i, idx) => ({
             productId: Number(i.product.id),
             title: i.product.name,
             productType: i.productType,
             fulfilmentStatus: 'pending',
             price: i.unitPrice,
             quantity: i.quantity,
-            total: i.unitPrice * i.quantity,
+            total: quote.lines[idx]?.lineTotalPaise || i.unitPrice * i.quantity,
           })),
         };
 
@@ -993,6 +1124,9 @@ export class StoreService {
             ]
           );
 
+          // Generate formal invoice atomically
+          await InvoiceService.generateInvoice(orderId, connection);
+
           await connection.commit();
           const refreshed = await this.getOrderById(orderId, connection);
           return { winner: true, order: refreshed! };
@@ -1056,6 +1190,9 @@ export class StoreService {
               ) VALUES (?, 'cancelled', 'confirmed', ?, 'Late payment received with stock re-reserved')`,
               [orderId, actor]
             );
+
+            // Generate formal invoice
+            await InvoiceService.generateInvoice(orderId, connection);
 
             await connection.commit();
             const refreshed = await this.getOrderById(orderId, connection);
@@ -1528,6 +1665,17 @@ export class StoreService {
           [params.orderId, order.status, newStatus, `user_${params.actorId || 'admin'}`, params.reason]
         );
 
+        // Generate formal Credit Note if order has an issued invoice
+        await InvoiceService.generateCreditNote(
+          {
+            orderId: params.orderId,
+            refundId: Number(refInsert.insertId),
+            amountPaise: refundAmount,
+            reason: params.reason,
+          },
+          connection
+        );
+
         await connection.commit();
         return {
           id: refInsert.insertId,
@@ -1696,10 +1844,20 @@ export class StoreService {
         paymentMethod: r.payment_method,
         paymentStatus: r.payment_status,
         paymentId: r.payment_id,
+        invoiceId: r.invoice_id ? Number(r.invoice_id) : null,
+        placeOfSupplyState: r.place_of_supply_state || null,
+        buyerGstin: r.buyer_gstin || null,
         subtotal: Number(r.subtotal),
         taxTotal: Number(r.tax_total),
         shippingTotal: Number(r.shipping_total),
         discountTotal: Number(r.discount_total),
+        codFeePaise: Number(r.cod_fee_paise || 0),
+        codFeeTaxPaise: Number(r.cod_fee_tax_paise || 0),
+        cgstPaise: Number(r.cgst_paise || 0),
+        sgstPaise: Number(r.sgst_paise || 0),
+        utgstPaise: Number(r.utgst_paise || 0),
+        igstPaise: Number(r.igst_paise || 0),
+        cessPaise: Number(r.cess_paise || 0),
         total: Number(r.total),
         currency: r.currency,
         shippingAddress: typeof r.shipping_address === 'string' ? JSON.parse(r.shipping_address) : r.shipping_address,
@@ -1722,6 +1880,15 @@ export class StoreService {
           sku: it.sku,
           price: Number(it.price),
           quantity: Number(it.quantity),
+          taxClassId: it.tax_class_id ? Number(it.tax_class_id) : null,
+          hsnCode: it.hsn_code || null,
+          taxRateBasisPoints: Number(it.tax_rate_basis_points || 0),
+          taxableAmountPaise: Number(it.taxable_amount_paise || 0),
+          cgstPaise: Number(it.cgst_paise || 0),
+          sgstPaise: Number(it.sgst_paise || 0),
+          utgstPaise: Number(it.utgst_paise || 0),
+          igstPaise: Number(it.igst_paise || 0),
+          cessPaise: Number(it.cess_paise || 0),
           total: Number(it.total),
         })),
       };

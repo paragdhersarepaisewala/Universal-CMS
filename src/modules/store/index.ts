@@ -4,6 +4,12 @@ import { ModuleManifest } from '../types.js';
 import { requireModule } from '../guard.js';
 import { moduleRegistry } from '../registry.js';
 import { StoreService } from './service.js';
+import { TaxEngine } from './tax.js';
+import { InvoiceService } from './invoice.js';
+import { AuditService } from '../../content/audit.js';
+import { pool } from '../../db/pool.js';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { cache, CACHE_TAGS } from '../../cache/index.js';
 import { authenticate } from '../../auth/middleware.js';
 import { requirePermission } from '../../rbac/middleware.js';
 import { OrderStatus } from './state-machine.js';
@@ -110,45 +116,33 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           items: Type.Array(
             Type.Object({
               productId: Type.Number(),
-              title: Type.String(),
-              price: Type.Number(),
+              title: Type.Optional(Type.String()),
+              price: Type.Optional(Type.Number()),
               quantity: Type.Number(),
             })
           ),
           couponCode: Type.Optional(Type.String()),
           shippingAmount: Type.Optional(Type.Number()),
+          placeOfSupplyState: Type.Optional(Type.String()),
+          shippingPincode: Type.Optional(Type.String()),
+          paymentMethod: Type.Optional(Type.String()),
         }),
-        response: {
-          200: Type.Object({
-            data: Type.Object({
-              subtotal: Type.Number(),
-              discountTotal: Type.Number(),
-              taxTotal: Type.Number(),
-              shippingTotal: Type.Number(),
-              total: Type.Number(),
-            }),
-          }),
-        },
       },
     },
     async (req, reply) => {
-      const { items, couponCode, shippingAmount } = req.body as {
-        items: Array<{ productId: number; title: string; price: number; quantity: number }>;
-        couponCode?: string;
-        shippingAmount?: number;
-      };
-
-      let couponDiscount = 0;
-      if (couponCode) {
-        const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
-        const check = await StoreService.validateCoupon(couponCode, subtotal);
-        if (check.valid) {
-          couponDiscount = check.discountAmount;
-        }
+      const body = req.body as any;
+      try {
+        const quote = await StoreService.quoteCart(body);
+        return reply.send({ data: quote });
+      } catch (err: any) {
+        const statusCode = err.statusCode || 400;
+        return reply.status(statusCode).send({
+          error: {
+            code: err.code || 'QUOTE_FAILED',
+            message: err.message,
+          },
+        });
       }
-
-      const quote = StoreService.calculateTotals({ items, couponDiscount, shippingAmount });
-      return reply.send({ data: quote });
     }
   );
 
@@ -373,6 +367,117 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
 
       return reply.send({ data: order });
+    }
+  );
+
+  // 5c. GET /store/orders/:id/invoice - Customer Order Tax Invoice (JSON metadata)
+  fastify.get(
+    '/orders/:id/invoice',
+    {
+      preHandler: [requireModule('store')],
+      schema: {
+        description: 'Get formal GST tax invoice or bill of supply for an order',
+        tags: ['Store'],
+        params: Type.Object({ id: Type.Number() }),
+        querystring: Type.Object({ guestToken: Type.Optional(Type.String()) }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const { guestToken } = req.query as { guestToken?: string };
+      const headerToken = req.headers['x-guest-token'] as string;
+      const effectiveToken = guestToken || headerToken;
+      const user = (req as any).user;
+
+      const order = await StoreService.getOrderById(id);
+      if (!order) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Order not found' } });
+      }
+
+      const isOwner =
+        (user && order.customerId === user.id) ||
+        user?.roleName === 'admin' ||
+        user?.roleName === 'owner';
+
+      if (!isOwner) {
+        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, id)) {
+          return reply.status(403).send({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Forbidden: You do not have permission to view this invoice',
+            },
+          });
+        }
+      }
+
+      const invoice = await InvoiceService.getInvoiceByOrderId(id);
+      if (!invoice) {
+        return reply.status(404).send({
+          error: {
+            code: 'INVOICE_NOT_FOUND',
+            message: 'Invoice has not been issued for this order yet',
+          },
+        });
+      }
+
+      return reply.send({ data: invoice });
+    }
+  );
+
+  // 5d. GET /store/orders/:id/invoice/pdf - Customer Order Tax Invoice (PDF Download)
+  fastify.get(
+    '/orders/:id/invoice/pdf',
+    {
+      preHandler: [requireModule('store')],
+      schema: {
+        description: 'Download printable PDF of a GST tax invoice or bill of supply',
+        tags: ['Store'],
+        params: Type.Object({ id: Type.Number() }),
+        querystring: Type.Object({ guestToken: Type.Optional(Type.String()) }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const { guestToken } = req.query as { guestToken?: string };
+      const headerToken = req.headers['x-guest-token'] as string;
+      const effectiveToken = guestToken || headerToken;
+      const user = (req as any).user;
+
+      const order = await StoreService.getOrderById(id);
+      if (!order) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Order not found' } });
+      }
+
+      const isOwner =
+        (user && order.customerId === user.id) ||
+        user?.roleName === 'admin' ||
+        user?.roleName === 'owner';
+
+      if (!isOwner) {
+        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, id)) {
+          return reply.status(403).send({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Forbidden: You do not have permission to download this invoice',
+            },
+          });
+        }
+      }
+
+      const invoice = await InvoiceService.getInvoiceByOrderId(id);
+      if (!invoice) {
+        return reply.status(404).send({
+          error: {
+            code: 'INVOICE_NOT_FOUND',
+            message: 'Invoice has not been issued for this order yet',
+          },
+        });
+      }
+
+      const pdfBuffer = await InvoiceService.renderInvoicePdf(invoice);
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', `inline; filename="${invoice.invoiceNumber.replace(/\//g, '_')}.pdf"`);
+      return reply.send(pdfBuffer);
     }
   );
 
@@ -733,12 +838,443 @@ export const adminStoreRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
       }
     }
   );
+
+  // Admin list all Indian states and UTs with GST codes
+  fastify.get(
+    '/states',
+    {
+      preHandler: [authenticate, requirePermission('store.products.view')],
+      schema: {
+        description: 'Get all Indian states and Union Territories with official GST codes',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (_req, reply) => {
+      const allStates = await TaxEngine.getAllStates();
+      return reply.send({ data: allStates });
+    }
+  );
+
+  // Admin list tax classes
+  fastify.get(
+    '/tax-classes',
+    {
+      preHandler: [authenticate, requirePermission('store.products.view')],
+      schema: {
+        description: 'Get all GST tax classes',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (_req, reply) => {
+      const taxClasses = await TaxEngine.getAllTaxClasses();
+      return reply.send({ data: taxClasses });
+    }
+  );
+
+  // Admin create tax class
+  fastify.post(
+    '/tax-classes',
+    {
+      preHandler: [authenticate, requirePermission('store.tax.manage')],
+      schema: {
+        description: 'Create a new GST tax class',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          name: Type.String({ minLength: 1 }),
+          kind: Type.Optional(Type.Union([Type.Literal('goods'), Type.Literal('service')])),
+          codeType: Type.Optional(Type.Union([Type.Literal('HSN'), Type.Literal('SAC')])),
+          code: Type.String({ minLength: 2 }),
+          rateBasisPoints: Type.Number({ minimum: 0 }),
+          cessBasisPoints: Type.Optional(Type.Number({ minimum: 0 })),
+          isExempt: Type.Optional(Type.Boolean()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const body = req.body as any;
+      const user = (req as any).user;
+      const connection = await pool.getConnection();
+      try {
+        const [res] = await connection.query<ResultSetHeader>(
+          `INSERT INTO tax_classes (name, kind, code_type, code, rate_basis_points, cess_basis_points, is_exempt)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            body.name,
+            body.kind || 'goods',
+            body.codeType || 'HSN',
+            body.code,
+            body.rateBasisPoints,
+            body.cessBasisPoints || 0,
+            body.isExempt || false,
+          ]
+        );
+        await cache.invalidateTags([CACHE_TAGS.SETTINGS]);
+        await AuditService.log({
+          userId: user?.id,
+          action: 'tax_class.create',
+          entityType: 'tax_class',
+          entityId: String(res.insertId),
+          afterValues: body,
+        });
+        return reply.status(201).send({ data: { id: res.insertId, ...body } });
+      } finally {
+        connection.release();
+      }
+    }
+  );
+
+  // Admin update tax class
+  fastify.put(
+    '/tax-classes/:id',
+    {
+      preHandler: [authenticate, requirePermission('store.tax.manage')],
+      schema: {
+        description: 'Update a GST tax class',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({ id: Type.Number() }),
+        body: Type.Object({
+          name: Type.Optional(Type.String({ minLength: 1 })),
+          kind: Type.Optional(Type.Union([Type.Literal('goods'), Type.Literal('service')])),
+          codeType: Type.Optional(Type.Union([Type.Literal('HSN'), Type.Literal('SAC')])),
+          code: Type.Optional(Type.String({ minLength: 2 })),
+          rateBasisPoints: Type.Optional(Type.Number({ minimum: 0 })),
+          cessBasisPoints: Type.Optional(Type.Number({ minimum: 0 })),
+          isExempt: Type.Optional(Type.Boolean()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const body = req.body as any;
+      const user = (req as any).user;
+      const connection = await pool.getConnection();
+      try {
+        const [existing] = await connection.query<RowDataPacket[]>(
+          'SELECT * FROM tax_classes WHERE id = ?',
+          [id]
+        );
+        if (existing.length === 0) {
+          return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Tax class not found' } });
+        }
+        const prev = existing[0];
+        const updates: string[] = [];
+        const params: any[] = [];
+        if (body.name !== undefined) { updates.push('name = ?'); params.push(body.name); }
+        if (body.kind !== undefined) { updates.push('kind = ?'); params.push(body.kind); }
+        if (body.codeType !== undefined) { updates.push('code_type = ?'); params.push(body.codeType); }
+        if (body.code !== undefined) { updates.push('code = ?'); params.push(body.code); }
+        if (body.rateBasisPoints !== undefined) { updates.push('rate_basis_points = ?'); params.push(body.rateBasisPoints); }
+        if (body.cessBasisPoints !== undefined) { updates.push('cess_basis_points = ?'); params.push(body.cessBasisPoints); }
+        if (body.isExempt !== undefined) { updates.push('is_exempt = ?'); params.push(body.isExempt); }
+
+        if (updates.length > 0) {
+          params.push(id);
+          await connection.query(`UPDATE tax_classes SET ${updates.join(', ')} WHERE id = ?`, params);
+          await cache.invalidateTags([CACHE_TAGS.SETTINGS]);
+        }
+
+        await AuditService.log({
+          userId: user?.id,
+          action: 'tax_class.update',
+          entityType: 'tax_class',
+          entityId: String(id),
+          beforeValues: prev,
+          afterValues: body,
+        });
+
+        const [updated] = await connection.query<RowDataPacket[]>('SELECT * FROM tax_classes WHERE id = ?', [id]);
+        return reply.send({ data: updated[0] });
+      } finally {
+        connection.release();
+      }
+    }
+  );
+
+  // Admin get store tax and COD settings
+  fastify.get(
+    '/settings/tax-cod',
+    {
+      preHandler: [authenticate, requirePermission('store.tax.manage')],
+      schema: {
+        description: 'Get store tax, GST, and COD settings',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (_req, reply) => {
+      const settings = await TaxEngine.getStoreSettings();
+      return reply.send({ data: settings });
+    }
+  );
+
+  // Admin update store tax and COD settings
+  fastify.put(
+    '/settings/tax-cod',
+    {
+      preHandler: [authenticate, requirePermission('store.tax.manage')],
+      schema: {
+        description: 'Update store tax, GST, and COD settings',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          sellerRegistrationType: Type.Optional(Type.Union([Type.Literal('regular'), Type.Literal('composition'), Type.Literal('unregistered')])),
+          sellerGstin: Type.Optional(Type.String()),
+          sellerLegalName: Type.Optional(Type.String()),
+          sellerTradeName: Type.Optional(Type.String()),
+          sellerState: Type.Optional(Type.String()),
+          priceIncludesTax: Type.Optional(Type.Boolean()),
+          roundingMode: Type.Optional(Type.Union([Type.Literal('per_line'), Type.Literal('per_invoice')])),
+          shippingTaxMode: Type.Optional(Type.Union([Type.Literal('product_proportional'), Type.Literal('highest_product_rate'), Type.Literal('fixed_service_rate')])),
+          shippingTaxClassId: Type.Optional(Type.Union([Type.Number(), Type.Null()])),
+          codEnabled: Type.Optional(Type.Boolean()),
+          codMinOrderPaise: Type.Optional(Type.Number()),
+          codMaxOrderPaise: Type.Optional(Type.Number()),
+          codFeePaise: Type.Optional(Type.Number()),
+          codBlockedPincodes: Type.Optional(Type.Array(Type.String())),
+          codRequiresConfirmation: Type.Optional(Type.Boolean()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const body = req.body as any;
+      const user = (req as any).user;
+      const prev = await TaxEngine.getStoreSettings();
+      const updated = await TaxEngine.updateStoreSettings(body);
+
+      await AuditService.log({
+        userId: user?.id,
+        action: 'store_settings.update',
+        entityType: 'store_settings',
+        entityId: 'store_settings',
+        beforeValues: prev,
+        afterValues: updated,
+      });
+
+      return reply.send({ data: updated });
+    }
+  );
+
+  // Admin list all customer GST tax invoices
+  fastify.get(
+    '/invoices',
+    {
+      preHandler: [authenticate, requirePermission('store.invoices.view')],
+      schema: {
+        description: 'Admin list all customer GST tax invoices with pagination and filters',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        querystring: Type.Object({
+          financialYear: Type.Optional(Type.String()),
+          status: Type.Optional(Type.String()),
+          orderId: Type.Optional(Type.Number()),
+          page: Type.Optional(Type.Number()),
+          perPage: Type.Optional(Type.Number()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { financialYear, status, orderId, page = 1, perPage = 20 } = req.query as any;
+      const offset = (Math.max(1, page) - 1) * Math.min(100, Math.max(1, perPage));
+
+      const connection = await pool.getConnection();
+      try {
+        let query = 'SELECT * FROM invoices WHERE 1=1';
+        const params: any[] = [];
+        if (financialYear) { query += ' AND financial_year = ?'; params.push(financialYear); }
+        if (status) { query += ' AND status = ?'; params.push(status); }
+        if (orderId) { query += ' AND order_id = ?'; params.push(orderId); }
+
+        const [countRows] = await connection.query<RowDataPacket[]>(
+          `SELECT COUNT(*) as cnt FROM (${query}) as sub`,
+          params
+        );
+        const total = Number(countRows[0]?.cnt || 0);
+
+        query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+        params.push(perPage, offset);
+        const [rows] = await connection.query<RowDataPacket[]>(query, params);
+
+        return reply.send({
+          data: rows.map((r) => ({
+            id: Number(r.id),
+            orderId: Number(r.order_id),
+            invoiceNumber: r.invoice_number,
+            financialYear: r.financial_year,
+            invoiceType: r.invoice_type,
+            status: r.status,
+            taxableAmountPaise: Number(r.taxable_amount_paise),
+            totalTaxPaise: Number(r.total_tax_paise),
+            totalAmountPaise: Number(r.total_amount_paise),
+            issuedAt: new Date(r.issued_at).toISOString(),
+          })),
+          meta: { total, page, perPage },
+        });
+      } finally {
+        connection.release();
+      }
+    }
+  );
+
+  // Admin get single invoice details
+  fastify.get(
+    '/invoices/:id',
+    {
+      preHandler: [authenticate, requirePermission('store.invoices.view')],
+      schema: {
+        description: 'Get full details and snapshots of a GST tax invoice',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({ id: Type.Number() }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const invoice = await InvoiceService.getInvoiceById(id);
+      if (!invoice) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Invoice not found' } });
+      }
+      return reply.send({ data: invoice });
+    }
+  );
+
+  // Admin download invoice PDF
+  fastify.get(
+    '/invoices/:id/pdf',
+    {
+      preHandler: [authenticate, requirePermission('store.invoices.view')],
+      schema: {
+        description: 'Download printable PDF of a GST tax invoice',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({ id: Type.Number() }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const invoice = await InvoiceService.getInvoiceById(id);
+      if (!invoice) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Invoice not found' } });
+      }
+      const pdfBuffer = await InvoiceService.renderInvoicePdf(invoice);
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', `inline; filename="${invoice.invoiceNumber.replace(/\//g, '_')}.pdf"`);
+      return reply.send(pdfBuffer);
+    }
+  );
+
+  // Admin list all credit notes
+  fastify.get(
+    '/credit-notes',
+    {
+      preHandler: [authenticate, requirePermission('store.invoices.view')],
+      schema: {
+        description: 'Admin list all GST credit notes with pagination',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        querystring: Type.Object({
+          financialYear: Type.Optional(Type.String()),
+          page: Type.Optional(Type.Number()),
+          perPage: Type.Optional(Type.Number()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { financialYear, page = 1, perPage = 20 } = req.query as any;
+      const offset = (Math.max(1, page) - 1) * Math.min(100, Math.max(1, perPage));
+
+      const connection = await pool.getConnection();
+      try {
+        let query = 'SELECT * FROM credit_notes WHERE 1=1';
+        const params: any[] = [];
+        if (financialYear) { query += ' AND financial_year = ?'; params.push(financialYear); }
+
+        const [countRows] = await connection.query<RowDataPacket[]>(
+          `SELECT COUNT(*) as cnt FROM (${query}) as sub`,
+          params
+        );
+        const total = Number(countRows[0]?.cnt || 0);
+
+        query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+        params.push(perPage, offset);
+        const [rows] = await connection.query<RowDataPacket[]>(query, params);
+
+        return reply.send({
+          data: rows.map((r) => ({
+            id: Number(r.id),
+            invoiceId: Number(r.invoice_id),
+            orderId: Number(r.order_id),
+            creditNoteNumber: r.credit_note_number,
+            financialYear: r.financial_year,
+            reason: r.reason,
+            taxableAmountPaise: Number(r.taxable_amount_paise),
+            totalTaxPaise: Number(r.total_tax_paise),
+            totalAmountPaise: Number(r.total_amount_paise),
+            issuedAt: new Date(r.issued_at).toISOString(),
+          })),
+          meta: { total, page, perPage },
+        });
+      } finally {
+        connection.release();
+      }
+    }
+  );
+
+  // Admin get credit note details
+  fastify.get(
+    '/credit-notes/:id',
+    {
+      preHandler: [authenticate, requirePermission('store.invoices.view')],
+      schema: {
+        description: 'Get details of a credit note',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({ id: Type.Number() }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const cn = await InvoiceService.getCreditNoteById(id);
+      if (!cn) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Credit note not found' } });
+      }
+      return reply.send({ data: cn });
+    }
+  );
+
+  // Admin download credit note PDF
+  fastify.get(
+    '/credit-notes/:id/pdf',
+    {
+      preHandler: [authenticate, requirePermission('store.invoices.view')],
+      schema: {
+        description: 'Download printable PDF of a credit note',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({ id: Type.Number() }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const cn = await InvoiceService.getCreditNoteById(id);
+      if (!cn) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Credit note not found' } });
+      }
+      const pdfBuffer = await InvoiceService.renderCreditNotePdf(cn);
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', `inline; filename="${cn.creditNoteNumber.replace(/\//g, '_')}.pdf"`);
+      return reply.send(pdfBuffer);
+    }
+  );
 };
 
 export const storeModuleManifest: ModuleManifest = {
   name: 'store',
   version: '0.2.0',
-  description: 'Ecommerce catalog, inventory, cart, checkout, payments, and orders',
+  description: 'Ecommerce catalog, inventory, cart, checkout, payments, taxes, invoices, and orders',
   isCore: false,
   dependsOn: ['media'],
   permissions: [
@@ -747,6 +1283,8 @@ export const storeModuleManifest: ModuleManifest = {
     { key: 'store.orders.view', description: 'View customer orders' },
     { key: 'store.orders.edit', description: 'Manage order status transitions and notes' },
     { key: 'store.orders.refund', description: 'Issue full and partial refunds for orders' },
+    { key: 'store.tax.manage', description: 'Manage GST tax classes, rules, and store tax/COD configuration' },
+    { key: 'store.invoices.view', description: 'View and download customer GST tax invoices and credit notes' },
   ],
   adminNav: [
     {
@@ -762,6 +1300,20 @@ export const storeModuleManifest: ModuleManifest = {
       route: '/admin/store/orders',
       permission: 'store.orders.view',
       order: 31,
+    },
+    {
+      id: 'store-invoices',
+      label: 'Invoices',
+      route: '/admin/store/invoices',
+      permission: 'store.invoices.view',
+      order: 32,
+    },
+    {
+      id: 'store-tax-cod',
+      label: 'Tax & COD',
+      route: '/admin/store/settings/tax-cod',
+      permission: 'store.tax.manage',
+      order: 33,
     },
   ],
   routesPrefix: '/store',

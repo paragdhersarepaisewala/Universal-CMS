@@ -87,4 +87,36 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Fundraising & Donations Engine:
   - Donations module (`DonationService`, `/api/v1/donations/*`, `/api/v1/admin/donations/*`) with campaign progress metrics, one-time contributions via Razorpay, anonymous donor privacy masking, and automatic Indian 80G tax receipt issuance.
 
+## [0.2.0] - 2026-10-25T18:30:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.1 (Payments, Orders, Stock Concurrency, Refunds, and Razorpay Webhook Infrastructure):
+  - Database schema additions via migration `0005_store_payments_refunds_h2_1`: `payments`, `refunds`, `order_status_history`, `stock_movements`, `payment_webhook_events`.
+  - Atomic stock reservation using MySQL conditional updates (`WHERE stock >= qty`) with variant ID sorting to prevent deadlocks and overselling.
+  - Pluggable `FulfilmentHandler` registry architecture decoupling physical shipping and digital delivery handlers from core store logic.
+  - Monotonic order state machine (`pending` -> `confirmed` -> `processing` -> `fulfilled` / `cancelled` / `refunded` / `partially_refunded`) with transition logging to `order_status_history`.
+  - Full and partial refund engine with restock restoration options and automatic status updates (`refunded` vs `partially_refunded`).
+  - Webhook processing with HMAC-SHA256 signature verification, event deduplication, and late payment reconciliation.
+  - Idempotency key tracking on checkout and refunds.
+  - Store contract spec `STORE-01`, `STORE-02`, and `STORE-03` in `docs/ADMIN-UI-CONTRACT.md`.
+  - Test suite in `tests/store-h2-1.test.ts` (28 integration tests passing against real MySQL).
+
+## [0.2.1] - 2026-10-25T20:38:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.2 (GST Calculation Engine, Invoicing, Credit Notes, PDF Generation, and COD Rules):
+  - Database schema additions via migration `0006_tax_invoices_cod_h2_2`: `tax_classes`, `tax_rules`, `states`, `invoice_sequences`, `invoices`, `credit_notes`.
+  - Seeded all 36 Indian states and union territories with 2-digit GST codes and UTGST designations (Chandigarh, Lakshadweep, Ladakh, DNH&DD, Andaman & Nicobar).
+  - Dynamic tax engine (`src/modules/store/tax.ts`) supporting regular/composition/unregistered tax regimes, inclusive/exclusive pricing, intrastate CGST/SGST/UTGST splitting, interstate IGST calculation, and CESS.
+  - COD rule engine validating pincode serviceability blocklist, min/max order limits, and COD surcharge calculation with 18% service tax.
+  - Sequential Indian Financial Year invoice and credit note generation (`INV/YYYY-YY/NNNN`, `CN/YYYY-YY/NNNN`) using `SELECT FOR UPDATE` atomic counters.
+  - Automated invoice generation upon payment capture and credit note generation upon refund issuance.
+  - Pure JavaScript PDF rendering engine using PDFKit (`src/modules/store/invoice.ts`) generating signed invoices and credit notes.
+  - Store endpoints: `POST /api/v1/store/cart/quote`, `GET /api/v1/store/orders/:id/invoice`, `GET /api/v1/store/orders/:id/invoice/pdf`.
+  - Admin store endpoints: `GET /api/v1/admin/store/states`, `GET/POST/PUT /api/v1/admin/store/tax-classes`, `GET/PUT /api/v1/admin/store/settings/tax-cod`, `GET /api/v1/admin/store/invoices`, `GET /api/v1/admin/store/invoices/:id`, `GET /api/v1/admin/store/invoices/:id/pdf`, `GET /api/v1/admin/store/credit-notes`, `GET /api/v1/admin/store/credit-notes/:id`, `GET /api/v1/admin/store/credit-notes/:id/pdf`.
+  - RBAC permissions: `store.tax.manage` and `store.invoices.view`.
+  - Admin UI contract specs `STORE-04`, `STORE-05`, `STORE-06` documented in `docs/ADMIN-UI-CONTRACT.md`.
+  - Integration test suite in `tests/store-h2-2.test.ts` (20 integration tests passing against real MySQL).
+
+
 

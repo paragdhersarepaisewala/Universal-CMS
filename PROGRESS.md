@@ -30,7 +30,7 @@ Status Legend:
 - [~] Customer profile page UI - belongs to client repo
 - [ ] Customer order history API: list orders, tracking link, live status (cms-core)
 - [~] Order history UI with live status and tracking link - belongs to client repo
-- [ ] Receipts and invoices PDF/printable HTML generation endpoint (cms-core)
+- [x] Receipts and invoices PDF/printable HTML generation endpoint (cms-core) - [2026-10-25 20:30 UTC+5:30] Pure JS PDFKit streaming generation in src/modules/store/invoice.ts, served via GET /api/v1/store/orders/:id/invoice/pdf, GET /api/v1/admin/store/invoices/:id/pdf, and GET /api/v1/admin/store/credit-notes/:id/pdf, verified in tests/store-h2-2.test.ts
 - [~] Receipts and invoices viewable and downloadable as PDF UI - belongs to client repo
 - [ ] Customer delivery addresses API: CRUD, default address, address table (cms-core)
 - [~] Delivery addresses UI: add, edit, delete, set default - belongs to client repo
@@ -84,10 +84,10 @@ Status Legend:
 - [x] Coupons and discount rules (StoreService coupon validation, percentage, fixed, min order, tested in tests/store.test.ts)
 - [x] Orders: full/partial refunds with line items & restock, state machine transitions, notes, and order_status_history (StoreService, POST /orders/:id/refunds, POST /orders/:id/transition, tested in tests/store-h2-1.test.ts)
 - [x] Razorpay webhooks with idempotency and event handling (HMAC-SHA256 signature verification, payment_webhook_events deduplication, monotonic state transitions, tested in tests/store-h2-1.test.ts)
-- [ ] Cash on delivery rules: pincode serviceability, max order value, and COD fee calculation (COD payment method accepted; rule engine pending)
+- [x] Cash on delivery rules: pincode serviceability, max order value, and COD fee calculation - [2026-10-25 20:30 UTC+5:30] Implemented in src/modules/store/tax.ts validateCodEligibility and calculateTax with pincode blocklist, min/max order limits, and cod_fee_paise + 18% service tax calculation, verified in tests/store-h2-2.test.ts
 - [ ] Multiple shipping partners adapter interface, rate and serviceability checks, AWB and tracking updates (cms-core)
 - [~] Shipping partner frontend integration and customer tracking view - belongs to client repo
-- [ ] GST tax configuration, formal GST invoices, and credit notes (18% cart calculation implemented; invoice generation, PDF, and credit notes pending)
+- [x] GST tax configuration, formal GST invoices, and credit notes - [2026-10-25 20:30 UTC+5:30] Full GST engine in src/modules/store/tax.ts & src/modules/store/invoice.ts supporting all 36 Indian states/UTs, UTGST without legislature, intra/interstate CGST/SGST/UTGST/IGST/CESS splitting, sequential Indian FY invoice/credit note numbers (INV/YYYY-YY/NNNN, CN/YYYY-YY/NNNN) with SELECT FOR UPDATE, verified in tests/store-h2-2.test.ts
 - [ ] Abandoned cart detection job and per-email on/off switches (order confirmation job enqueued; abandoned cart detector and email switches pending)
 - [ ] Admin customer management API: list, segments, notes, order history, CSV export (cms-core)
 - [~] Admin customer management UI - belongs to client repo

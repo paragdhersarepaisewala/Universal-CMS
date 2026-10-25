@@ -71,6 +71,8 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'store.orders.view', module: 'store', description: 'View orders and fulfillments' },
   { key: 'store.orders.edit', module: 'store', description: 'Update order status transitions and notes' },
   { key: 'store.orders.refund', module: 'store', description: 'Issue full and partial refunds for orders' },
+  { key: 'store.tax.manage', module: 'store', description: 'Manage GST tax classes, rules, and store tax/COD configuration' },
+  { key: 'store.invoices.view', module: 'store', description: 'View and download customer GST tax invoices and credit notes' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -116,6 +118,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'store.orders.view',
     'store.orders.edit',
     'store.orders.refund',
+    'store.tax.manage',
+    'store.invoices.view',
   ],
 
   manager: [

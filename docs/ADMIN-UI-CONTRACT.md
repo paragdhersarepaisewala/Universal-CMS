@@ -393,6 +393,81 @@ Actions
   Issue Refund      | POST /api/v1/admin/store/orders/:id/refund | store.orders.refund | confirms with gateway, records refund | audit store.order.refunded
 ```
 
+### 5.19 Store: Tax Classes & Indian States (`STORE-04`)
+```
+Screen id:          STORE-04
+Route in GUI:       /admin/store/tax-classes
+Module:             store
+Permissions:        view = store.products.view, actions = store.tax.manage
+
+Data loaded
+  States:           GET /api/v1/admin/store/states
+  Tax Classes:      GET /api/v1/admin/store/tax-classes
+
+Fields (Create / Edit):
+  Class Name        | name              | text     | yes | Descriptor (e.g. Standard GST 18%)
+  Kind              | kind              | select   | yes | goods or service
+  Code Type         | codeType          | select   | yes | HSN or SAC
+  HSN/SAC Code      | code              | text     | yes | Official tariff classification code
+  Rate (Basis Points)| rateBasisPoints  | number   | yes | Rate in bps (1800 = 18.00%, 500 = 5.00%)
+  Cess (Basis Points)| cessBasisPoints  | number   | no  | Compensation cess in bps (default: 0)
+  Exempt Flag       | isExempt          | boolean  | no  | Zero-rated / exempted from GST
+
+Actions
+  Create Class      | POST /api/v1/admin/store/tax-classes | store.tax.manage | saves class | audit tax_class.create
+  Update Class      | PUT /api/v1/admin/store/tax-classes/:id | store.tax.manage | updates rate/code | audit tax_class.update
+```
+
+### 5.20 Store: Tax & Cash on Delivery Settings (`STORE-05`)
+```
+Screen id:          STORE-05
+Route in GUI:       /admin/store/settings/tax-cod
+Module:             store
+Permissions:        view = store.tax.manage, actions = store.tax.manage
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/store/settings/tax-cod
+  Response fields:  sellerRegistrationType, sellerGstin, sellerLegalName, sellerTradeName, sellerState, priceIncludesTax, roundingMode, shippingTaxMode, codEnabled, codMinOrderPaise, codMaxOrderPaise, codFeePaise, codBlockedPincodes, codRequiresConfirmation
+
+Fields:
+  Registration Type | sellerRegistrationType | select | yes | regular, composition, or unregistered
+  Seller GSTIN      | sellerGstin            | text   | yes | 15-character statutory GST identification number
+  Legal Entity Name | sellerLegalName        | text   | yes | Legal name on GST certificate
+  Trade Name        | sellerTradeName        | text   | no  | Brand or storefront trade name
+  Seller State Code | sellerState            | select | yes | 2-digit official state GST code (e.g. 27 for Maharashtra)
+  Price Includes Tax| priceIncludesTax        | boolean| yes | True if displayed prices are tax-inclusive
+  Rounding Mode     | roundingMode           | select | yes | per_line or per_invoice
+  COD Enabled       | codEnabled             | boolean| yes | Enable or disable Cash on Delivery
+  Min COD Order     | codMinOrderPaise       | number | yes | Minimum order total in integer paise for COD
+  Max COD Order     | codMaxOrderPaise       | number | yes | Maximum order total in integer paise for COD
+  COD Surcharge Fee | codFeePaise            | number | yes | Fixed COD handling fee in integer paise
+  Blocked Pincodes  | codBlockedPincodes     | array  | no  | Blocklisted delivery pincodes unserviceable for COD
+  Requires Confirm  | codRequiresConfirmation| boolean| yes | Await admin confirmation before order moves to confirmed
+
+Actions
+  Save Settings     | PUT /api/v1/admin/store/settings/tax-cod | store.tax.manage | saves settings, invalidates cache | audit store_settings.update
+```
+
+### 5.21 Store: GST Tax Invoices & Credit Notes (`STORE-06`)
+```
+Screen id:          STORE-06
+Route in GUI:       /admin/store/invoices
+Module:             store
+Permissions:        view = store.invoices.view, actions = none (immutable accounting ledgers)
+
+Data loaded
+  Invoices:         GET /api/v1/admin/store/invoices (query: financialYear, status, orderId, page, perPage)
+  Single Invoice:   GET /api/v1/admin/store/invoices/:id
+  Download PDF:     GET /api/v1/admin/store/invoices/:id/pdf
+  Credit Notes:     GET /api/v1/admin/store/credit-notes (query: financialYear, page, perPage)
+  Single Note:      GET /api/v1/admin/store/credit-notes/:id
+  Download Note PDF:GET /api/v1/admin/store/credit-notes/:id/pdf
+
+Customer Endpoints:
+  Order Invoice     | GET /api/v1/store/orders/:id/invoice (authenticated customer or guest token)
+  Order Invoice PDF | GET /api/v1/store/orders/:id/invoice/pdf (authenticated customer or guest token)
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -424,4 +499,5 @@ Actions
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.8 Content, theme, and compliance API: pages, blocks, menus, media, SEO, redirects, India legal drafts, consent logs, site settings, and audit logging (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.9 API Contract: API Tokens, outbound Webhooks HMAC signing, API.md reference, and Gate 2 sign-off (in-api) |
 | 0.2.0 | 0.2.0 | 2026-10-25 | H2.1 Store Engine: atomic stock reservation, payments, Razorpay webhooks, state machine, order notes, refunds, digital/physical handlers (in-api) |
+| 0.2.1 | 0.2.1 | 2026-10-25 | H2.2 Store Engine: GST tax classes, Indian states/UTs, sequential FY invoices, credit notes, PDF generation, COD rule engine (in-api) |
 

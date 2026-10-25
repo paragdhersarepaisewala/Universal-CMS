@@ -362,6 +362,8 @@ export const products = mysqlTable('products', {
   status: varchar('status', { length: 20 }).default('draft').notNull(), // draft, active, archived
   isAgeRestricted: boolean('is_age_restricted').default(false).notNull(),
   featuredImageId: bigint('featured_image_id', { mode: 'number', unsigned: true }),
+  taxClassId: bigint('tax_class_id', { mode: 'number', unsigned: true }),
+  hsnCode: varchar('hsn_code', { length: 20 }),
   version: int('version').default(1).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
@@ -389,10 +391,20 @@ export const orders = mysqlTable('orders', {
   paymentMethod: varchar('payment_method', { length: 50 }).default('razorpay').notNull(), // razorpay, cod
   paymentStatus: varchar('payment_status', { length: 30 }).default('pending').notNull(), // pending, authorized, captured, failed, refunded
   paymentId: varchar('payment_id', { length: 100 }),
+  invoiceId: bigint('invoice_id', { mode: 'number', unsigned: true }),
+  placeOfSupplyState: varchar('place_of_supply_state', { length: 2 }),
+  buyerGstin: varchar('buyer_gstin', { length: 15 }),
   subtotal: int('subtotal').notNull(),
   taxTotal: int('tax_total').default(0).notNull(),
   shippingTotal: int('shipping_total').default(0).notNull(),
   discountTotal: int('discount_total').default(0).notNull(),
+  codFeePaise: int('cod_fee_paise').default(0).notNull(),
+  codFeeTaxPaise: int('cod_fee_tax_paise').default(0).notNull(),
+  cgstPaise: int('cgst_paise').default(0).notNull(),
+  sgstPaise: int('sgst_paise').default(0).notNull(),
+  utgstPaise: int('utgst_paise').default(0).notNull(),
+  igstPaise: int('igst_paise').default(0).notNull(),
+  cessPaise: int('cess_paise').default(0).notNull(),
   total: int('total').notNull(),
   currency: varchar('currency', { length: 10 }).default('INR').notNull(),
   shippingAddress: json('shipping_address'),
@@ -419,6 +431,15 @@ export const orderItems = mysqlTable('order_items', {
   sku: varchar('sku', { length: 100 }),
   price: int('price').notNull(),
   quantity: int('quantity').default(1).notNull(),
+  taxClassId: bigint('tax_class_id', { mode: 'number', unsigned: true }),
+  hsnCode: varchar('hsn_code', { length: 20 }),
+  taxRateBasisPoints: int('tax_rate_basis_points').default(0).notNull(),
+  taxableAmountPaise: int('taxable_amount_paise').default(0).notNull(),
+  cgstPaise: int('cgst_paise').default(0).notNull(),
+  sgstPaise: int('sgst_paise').default(0).notNull(),
+  utgstPaise: int('utgst_paise').default(0).notNull(),
+  igstPaise: int('igst_paise').default(0).notNull(),
+  cessPaise: int('cess_paise').default(0).notNull(),
   total: int('total').notNull(),
 });
 
@@ -505,6 +526,89 @@ export const paymentWebhookEvents = mysqlTable('payment_webhook_events', {
   payload: json('payload').notNull(),
   status: varchar('status', { length: 50 }).default('received').notNull(), // received, processed, failed, ignored
   processedAt: timestamp('processed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 23b. GST Tax Classes, Rules & States
+export const taxClasses = mysqlTable('tax_classes', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 100 }).notNull(),
+  kind: varchar('kind', { length: 20 }).default('goods').notNull(), // goods, service
+  codeType: varchar('code_type', { length: 10 }).default('HSN').notNull(), // HSN, SAC
+  code: varchar('code', { length: 20 }).notNull(),
+  rateBasisPoints: int('rate_basis_points').default(1800).notNull(), // 1800 = 18.00%
+  cessBasisPoints: int('cess_basis_points').default(0).notNull(),
+  isExempt: boolean('is_exempt').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const taxRules = mysqlTable('tax_rules', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  taxClassId: bigint('tax_class_id', { mode: 'number', unsigned: true }).notNull(),
+  minPricePaise: int('min_price_paise').default(0).notNull(),
+  maxPricePaise: int('max_price_paise'), // null means infinity
+  rateBasisPoints: int('rate_basis_points').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const states = mysqlTable('states', {
+  gstCode: varchar('gst_code', { length: 2 }).primaryKey(), // '27', '29', etc.
+  name: varchar('100', { length: 100 }).notNull(),
+  isUnionTerritory: boolean('is_union_territory').default(false).notNull(),
+  usesUtgst: boolean('uses_utgst').default(false).notNull(),
+});
+
+export const invoiceSequences = mysqlTable('invoice_sequences', {
+  financialYear: varchar('financial_year', { length: 10 }).primaryKey(), // '2026-27'
+  lastInvoiceNumber: int('last_invoice_number').default(0).notNull(),
+  lastCreditNoteNumber: int('last_credit_note_number').default(0).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const invoices = mysqlTable('invoices', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  invoiceNumber: varchar('invoice_number', { length: 50 }).notNull().unique(), // 'INV/2026-27/0001'
+  financialYear: varchar('financial_year', { length: 10 }).notNull(),
+  invoiceType: varchar('invoice_type', { length: 30 }).default('tax_invoice').notNull(), // tax_invoice, bill_of_supply
+  status: varchar('status', { length: 30 }).default('issued').notNull(), // issued, cancelled
+  sellerSnapshot: json('seller_snapshot').notNull(),
+  buyerSnapshot: json('buyer_snapshot').notNull(),
+  lineItemsSnapshot: json('line_items_snapshot').notNull(),
+  taxSummary: json('tax_summary').notNull(),
+  taxableAmountPaise: int('taxable_amount_paise').notNull(),
+  cgstAmountPaise: int('cgst_amount_paise').default(0).notNull(),
+  sgstAmountPaise: int('sgst_amount_paise').default(0).notNull(),
+  utgstAmountPaise: int('utgst_amount_paise').default(0).notNull(),
+  igstAmountPaise: int('igst_amount_paise').default(0).notNull(),
+  cessAmountPaise: int('cess_amount_paise').default(0).notNull(),
+  totalTaxPaise: int('total_tax_paise').notNull(),
+  shippingPaise: int('shipping_paise').default(0).notNull(),
+  shippingTaxPaise: int('shipping_tax_paise').default(0).notNull(),
+  totalAmountPaise: int('total_amount_paise').notNull(),
+  issuedAt: timestamp('issued_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const creditNotes = mysqlTable('credit_notes', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  invoiceId: bigint('invoice_id', { mode: 'number', unsigned: true }).notNull(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  refundId: bigint('refund_id', { mode: 'number', unsigned: true }),
+  creditNoteNumber: varchar('credit_note_number', { length: 50 }).notNull().unique(), // 'CN/2026-27/0001'
+  financialYear: varchar('financial_year', { length: 10 }).notNull(),
+  reason: text('reason').notNull(),
+  snapshot: json('snapshot').notNull(),
+  taxableAmountPaise: int('taxable_amount_paise').notNull(),
+  cgstAmountPaise: int('cgst_amount_paise').default(0).notNull(),
+  sgstAmountPaise: int('sgst_amount_paise').default(0).notNull(),
+  utgstAmountPaise: int('utgst_amount_paise').default(0).notNull(),
+  igstAmountPaise: int('igst_amount_paise').default(0).notNull(),
+  cessAmountPaise: int('cess_amount_paise').default(0).notNull(),
+  totalTaxPaise: int('total_tax_paise').notNull(),
+  totalAmountPaise: int('total_amount_paise').notNull(),
+  issuedAt: timestamp('issued_at').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

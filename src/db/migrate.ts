@@ -763,6 +763,254 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0005_store_engine_h2_1 completed.');
+    }
+
+    // Check 0006_tax_invoices_cod_h2_2
+    const [rows6] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0006_tax_invoices_cod_h2_2']
+    );
+
+    if (rows6.length === 0) {
+      console.log('[Migration] Applying 0006_tax_invoices_cod_h2_2...');
+
+      const ensureColumn = async (table: string, column: string, definition: string) => {
+        try {
+          await connection.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition};`);
+        } catch (err: any) {
+          if (err?.errno !== 1060 && !err?.message?.includes('Duplicate column')) {
+            throw err;
+          }
+        }
+      };
+
+      // 1. Create tables
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS tax_classes (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          kind VARCHAR(20) NOT NULL DEFAULT 'goods',
+          code_type VARCHAR(10) NOT NULL DEFAULT 'HSN',
+          code VARCHAR(20) NOT NULL,
+          rate_basis_points INT NOT NULL DEFAULT 1800,
+          cess_basis_points INT NOT NULL DEFAULT 0,
+          is_exempt BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_tax_code (code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS tax_rules (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          tax_class_id BIGINT UNSIGNED NOT NULL,
+          min_price_paise INT NOT NULL DEFAULT 0,
+          max_price_paise INT NULL,
+          rate_basis_points INT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_tax_rules_class (tax_class_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS states (
+          gst_code VARCHAR(2) PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          is_union_territory BOOLEAN NOT NULL DEFAULT FALSE,
+          uses_utgst BOOLEAN NOT NULL DEFAULT FALSE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS invoice_sequences (
+          financial_year VARCHAR(10) PRIMARY KEY,
+          last_invoice_number INT NOT NULL DEFAULT 0,
+          last_credit_note_number INT NOT NULL DEFAULT 0,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS invoices (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          invoice_number VARCHAR(50) NOT NULL UNIQUE,
+          financial_year VARCHAR(10) NOT NULL,
+          invoice_type VARCHAR(30) NOT NULL DEFAULT 'tax_invoice',
+          status VARCHAR(30) NOT NULL DEFAULT 'issued',
+          seller_snapshot JSON NOT NULL,
+          buyer_snapshot JSON NOT NULL,
+          line_items_snapshot JSON NOT NULL,
+          tax_summary JSON NOT NULL,
+          taxable_amount_paise INT NOT NULL,
+          cgst_amount_paise INT NOT NULL DEFAULT 0,
+          sgst_amount_paise INT NOT NULL DEFAULT 0,
+          utgst_amount_paise INT NOT NULL DEFAULT 0,
+          igst_amount_paise INT NOT NULL DEFAULT 0,
+          cess_amount_paise INT NOT NULL DEFAULT 0,
+          total_tax_paise INT NOT NULL,
+          shipping_paise INT NOT NULL DEFAULT 0,
+          shipping_tax_paise INT NOT NULL DEFAULT 0,
+          total_amount_paise INT NOT NULL,
+          issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_invoices_order (order_id),
+          INDEX idx_invoices_fy (financial_year)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS credit_notes (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          invoice_id BIGINT UNSIGNED NOT NULL,
+          order_id BIGINT UNSIGNED NOT NULL,
+          refund_id BIGINT UNSIGNED NULL,
+          credit_note_number VARCHAR(50) NOT NULL UNIQUE,
+          financial_year VARCHAR(10) NOT NULL,
+          reason TEXT NOT NULL,
+          snapshot JSON NOT NULL,
+          taxable_amount_paise INT NOT NULL,
+          cgst_amount_paise INT NOT NULL DEFAULT 0,
+          sgst_amount_paise INT NOT NULL DEFAULT 0,
+          utgst_amount_paise INT NOT NULL DEFAULT 0,
+          igst_amount_paise INT NOT NULL DEFAULT 0,
+          cess_amount_paise INT NOT NULL DEFAULT 0,
+          total_tax_paise INT NOT NULL,
+          total_amount_paise INT NOT NULL,
+          issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_cn_invoice (invoice_id),
+          INDEX idx_cn_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 2. Add columns
+      await ensureColumn('products', 'tax_class_id', 'BIGINT UNSIGNED NULL');
+      await ensureColumn('products', 'hsn_code', 'VARCHAR(20) NULL');
+
+      await ensureColumn('orders', 'invoice_id', 'BIGINT UNSIGNED NULL');
+      await ensureColumn('orders', 'place_of_supply_state', 'VARCHAR(2) NULL');
+      await ensureColumn('orders', 'buyer_gstin', 'VARCHAR(15) NULL');
+      await ensureColumn('orders', 'cod_fee_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('orders', 'cod_fee_tax_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('orders', 'cgst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('orders', 'sgst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('orders', 'utgst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('orders', 'igst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('orders', 'cess_paise', 'INT NOT NULL DEFAULT 0');
+
+      await ensureColumn('order_items', 'tax_class_id', 'BIGINT UNSIGNED NULL');
+      await ensureColumn('order_items', 'hsn_code', 'VARCHAR(20) NULL');
+      await ensureColumn('order_items', 'tax_rate_basis_points', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('order_items', 'taxable_amount_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('order_items', 'cgst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('order_items', 'sgst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('order_items', 'utgst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('order_items', 'igst_paise', 'INT NOT NULL DEFAULT 0');
+      await ensureColumn('order_items', 'cess_paise', 'INT NOT NULL DEFAULT 0');
+
+      // 3. Seed States & Union Territories
+      const indianStates = [
+        { code: '01', name: 'Jammu and Kashmir', ut: true, utgst: false },
+        { code: '02', name: 'Himachal Pradesh', ut: false, utgst: false },
+        { code: '03', name: 'Punjab', ut: false, utgst: false },
+        { code: '04', name: 'Chandigarh', ut: true, utgst: true },
+        { code: '05', name: 'Uttarakhand', ut: false, utgst: false },
+        { code: '06', name: 'Haryana', ut: false, utgst: false },
+        { code: '07', name: 'Delhi', ut: true, utgst: false },
+        { code: '08', name: 'Rajasthan', ut: false, utgst: false },
+        { code: '09', name: 'Uttar Pradesh', ut: false, utgst: false },
+        { code: '10', name: 'Bihar', ut: false, utgst: false },
+        { code: '11', name: 'Sikkim', ut: false, utgst: false },
+        { code: '12', name: 'Arunachal Pradesh', ut: false, utgst: false },
+        { code: '13', name: 'Nagaland', ut: false, utgst: false },
+        { code: '14', name: 'Manipur', ut: false, utgst: false },
+        { code: '15', name: 'Mizoram', ut: false, utgst: false },
+        { code: '16', name: 'Tripura', ut: false, utgst: false },
+        { code: '17', name: 'Meghalaya', ut: false, utgst: false },
+        { code: '18', name: 'Assam', ut: false, utgst: false },
+        { code: '19', name: 'West Bengal', ut: false, utgst: false },
+        { code: '20', name: 'Jharkhand', ut: false, utgst: false },
+        { code: '21', name: 'Odisha', ut: false, utgst: false },
+        { code: '22', name: 'Chhattisgarh', ut: false, utgst: false },
+        { code: '23', name: 'Madhya Pradesh', ut: false, utgst: false },
+        { code: '24', name: 'Gujarat', ut: false, utgst: false },
+        { code: '26', name: 'Dadra and Nagar Haveli and Daman and Diu', ut: true, utgst: true },
+        { code: '27', name: 'Maharashtra', ut: false, utgst: false },
+        { code: '29', name: 'Karnataka', ut: false, utgst: false },
+        { code: '30', name: 'Goa', ut: false, utgst: false },
+        { code: '31', name: 'Lakshadweep', ut: true, utgst: true },
+        { code: '32', name: 'Kerala', ut: false, utgst: false },
+        { code: '33', name: 'Tamil Nadu', ut: false, utgst: false },
+        { code: '34', name: 'Puducherry', ut: true, utgst: false },
+        { code: '35', name: 'Andaman and Nicobar Islands', ut: true, utgst: true },
+        { code: '36', name: 'Telangana', ut: false, utgst: false },
+        { code: '37', name: 'Andhra Pradesh', ut: false, utgst: false },
+        { code: '38', name: 'Ladakh', ut: true, utgst: true },
+        { code: '97', name: 'Other Territory', ut: true, utgst: true },
+      ];
+
+      for (const s of indianStates) {
+        await connection.query(
+          `INSERT INTO states (gst_code, name, is_union_territory, uses_utgst)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE name = VALUES(name), is_union_territory = VALUES(is_union_territory), uses_utgst = VALUES(uses_utgst)`,
+          [s.code, s.name, s.ut, s.utgst]
+        );
+      }
+
+      // 4. Seed Standard Tax Classes
+      const standardTaxClasses = [
+        { name: 'Standard GST 18%', kind: 'goods', codeType: 'HSN', code: '9900', rate: 1800, exempt: false },
+        { name: 'Reduced GST 12%', kind: 'goods', codeType: 'HSN', code: '9901', rate: 1200, exempt: false },
+        { name: 'Low GST 5%', kind: 'goods', codeType: 'HSN', code: '9902', rate: 500, exempt: false },
+        { name: 'Luxury GST 28%', kind: 'goods', codeType: 'HSN', code: '9903', rate: 2800, exempt: false },
+        { name: 'Exempt / Zero Rated', kind: 'goods', codeType: 'HSN', code: '9904', rate: 0, exempt: true },
+        { name: 'Services GST 18%', kind: 'service', codeType: 'SAC', code: '9983', rate: 1800, exempt: false },
+      ];
+
+      for (const tc of standardTaxClasses) {
+        await connection.query(
+          `INSERT INTO tax_classes (name, kind, code_type, code, rate_basis_points, is_exempt)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE rate_basis_points = VALUES(rate_basis_points)`,
+          [tc.name, tc.kind, tc.codeType, tc.code, tc.rate, tc.exempt]
+        );
+      }
+
+      // 5. Seed default store settings if not existing
+      const defaultStoreSettings = {
+        sellerRegistrationType: 'regular',
+        sellerGstin: '27AAPFU0939F1ZV',
+        sellerLegalName: 'Universal Commerce Private Limited',
+        sellerTradeName: 'Universal Store',
+        sellerState: '27', // Maharashtra
+        priceIncludesTax: false,
+        roundingMode: 'per_line',
+        shippingTaxMode: 'fixed_service_rate',
+        shippingTaxClassId: null,
+        codEnabled: true,
+        codMinOrderPaise: 10000, // Rs 100
+        codMaxOrderPaise: 5000000, // Rs 50,000
+        codFeePaise: 5000, // Rs 50
+        codBlockedPincodes: ['110000', '999999'],
+        codRequiresConfirmation: false,
+      };
+
+      await connection.query(
+        `INSERT INTO settings (\`key\`, \`value\`, \`group\`, is_public, version)
+         VALUES ('store_settings', ?, 'store', true, 1)
+         ON DUPLICATE KEY UPDATE version = version + 1`,
+        [JSON.stringify(defaultStoreSettings)]
+      );
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0006_tax_invoices_cod_h2_2']
+      );
+
+      console.log('[Migration] 0006_tax_invoices_cod_h2_2 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }
