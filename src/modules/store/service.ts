@@ -8,6 +8,7 @@ import { canTransition, isMonotonicRegression, OrderStatus, OrderKind } from './
 import { fulfilmentRegistry } from './fulfilment.js';
 import { TaxEngine, QuoteCalculationResult } from './tax.js';
 import { InvoiceService } from './invoice.js';
+import { ShippingService } from '../shipping/service.js';
 
 export interface ProductRecord {
   id: number;
@@ -73,6 +74,10 @@ export interface OrderRecord {
   subtotal: number;
   taxTotal: number;
   shippingTotal: number;
+  shippingMethod?: string | null;
+  shippingCarrier?: string | null;
+  shippingAwb?: string | null;
+  trackingNumber?: string | null;
   discountTotal: number;
   codFeePaise?: number;
   codFeeTaxPaise?: number;
@@ -120,6 +125,8 @@ export interface CreateOrderParams {
   billingState?: string;
   buyerGstin?: string;
   couponCode?: string;
+  shippingAmount?: number;
+  shippingMethod?: string;
   notes?: string;
   idempotencyKey?: string;
   rawPayload?: unknown;
@@ -764,12 +771,64 @@ export class StoreService {
           }
         }
 
-        // 5. Compute server totals and tax breakdown using TaxEngine
+        // 5. Compute server totals and tax breakdown using TaxEngine & ShippingService
         const storeSettings = await TaxEngine.getStoreSettings();
         const shippingPincode =
           (params.shippingAddress as any)?.pincode ||
           (params.shippingAddress as any)?.postalCode ||
           null;
+
+        let calculatedShippingAmount = params.shippingAmount;
+        let shippingMethodName = params.shippingMethod || null;
+
+        if (hasPhysical) {
+          if (!moduleRegistry.isEnabled('shipping')) {
+            const shipSettings = await ShippingService.getSettings();
+            if (shipSettings.disabledBehavior === 'block_physical') {
+              const error = new Error('Shipping is currently disabled for physical goods');
+              (error as any).statusCode = 422;
+              (error as any).code = 'SHIPPING_DISABLED';
+              throw error;
+            } else {
+              calculatedShippingAmount = calculatedShippingAmount ?? shipSettings.fallbackRatePaise ?? 5000;
+              shippingMethodName = shippingMethodName || 'Flat Rate Delivery';
+            }
+          } else if (params.shippingMethod || params.shippingAmount !== undefined) {
+            const shippingRates = await ShippingService.calculateShipping({
+              items: validatedItems.map((i) => ({
+                productId: Number(i.product.id),
+                productType: i.productType,
+                quantity: i.quantity,
+                pricePaise: i.unitPrice,
+                weightGrams: i.product.weight_grams ?? 500,
+              })),
+              destination: {
+                country: (params.shippingAddress as any)?.country || 'IN',
+                state: (params.shippingAddress as any)?.state || billingState,
+                pincode: shippingPincode || '400001',
+              },
+              cod: params.paymentMethod === 'cod',
+            });
+
+            if (calculatedShippingAmount === undefined) {
+              const matchedRate = params.shippingMethod
+                ? shippingRates.find(
+                    (r) =>
+                      r.code === params.shippingMethod ||
+                      r.name.toLowerCase() === params.shippingMethod?.toLowerCase()
+                  ) || shippingRates[0]
+                : shippingRates[0];
+              calculatedShippingAmount = matchedRate ? matchedRate.amountPaise : 0;
+              if (!shippingMethodName && matchedRate) {
+                shippingMethodName = matchedRate.name;
+              }
+            }
+          } else {
+            calculatedShippingAmount = 0;
+          }
+        } else {
+          calculatedShippingAmount = 0;
+        }
 
         const quote = await TaxEngine.calculateOrderTaxes({
           items: validatedItems.map((i) => ({
@@ -783,7 +842,7 @@ export class StoreService {
           })),
           placeOfSupplyState: billingState,
           shippingPincode,
-          shippingAmount: 0,
+          shippingAmount: calculatedShippingAmount,
           couponDiscount,
           paymentMethod: params.paymentMethod,
         });
@@ -810,12 +869,12 @@ export class StoreService {
           `INSERT INTO orders (
             order_number, customer_id, customer_email, status, order_kind,
             payment_method, payment_status, place_of_supply_state, buyer_gstin,
-            subtotal, tax_total, shipping_total, discount_total, cod_fee_paise,
+            subtotal, tax_total, shipping_total, shipping_method, discount_total, cod_fee_paise,
             cod_fee_tax_paise, cgst_paise, sgst_paise, utgst_paise, igst_paise,
             cess_paise, total, currency, shipping_address, billing_address,
             billing_state, notes, idempotency_key, idempotency_payload_hash,
             expires_at
-          ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'INR', ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'INR', ?, ?, ?, ?, ?, ?, ?)`,
           [
             orderNumber,
             params.customerId || null,
@@ -828,6 +887,7 @@ export class StoreService {
             quote.subtotal,
             quote.taxTotal,
             quote.shippingTotal,
+            shippingMethodName,
             quote.discountTotal,
             quote.codFeePaise,
             quote.codFeeTaxPaise,
@@ -863,10 +923,10 @@ export class StoreService {
           await connection.query(
             `INSERT INTO order_items (
               order_id, product_id, variant_id, product_type, fulfilment_status,
-              title, sku, price, quantity, tax_class_id, hsn_code,
+              title, sku, price, quantity, weight_grams, tax_class_id, hsn_code,
               tax_rate_basis_points, taxable_amount_paise, cgst_paise, sgst_paise,
               utgst_paise, igst_paise, cess_paise, total
-            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               orderId,
               line.product.id,
@@ -876,6 +936,7 @@ export class StoreService {
               line.product.sku || null,
               line.unitPrice,
               line.quantity,
+              line.product.weight_grams ?? 500,
               lineTax?.taxClassId || null,
               lineTax?.hsnCode || '9900',
               lineTax?.taxRateBasisPoints || 0,
@@ -1850,6 +1911,10 @@ export class StoreService {
         subtotal: Number(r.subtotal),
         taxTotal: Number(r.tax_total),
         shippingTotal: Number(r.shipping_total),
+        shippingMethod: r.shipping_method || null,
+        shippingCarrier: r.shipping_carrier || null,
+        shippingAwb: r.shipping_awb || null,
+        trackingNumber: r.tracking_number || null,
         discountTotal: Number(r.discount_total),
         codFeePaise: Number(r.cod_fee_paise || 0),
         codFeeTaxPaise: Number(r.cod_fee_tax_paise || 0),

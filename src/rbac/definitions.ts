@@ -73,6 +73,9 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'store.orders.refund', module: 'store', description: 'Issue full and partial refunds for orders' },
   { key: 'store.tax.manage', module: 'store', description: 'Manage GST tax classes, rules, and store tax/COD configuration' },
   { key: 'store.invoices.view', module: 'store', description: 'View and download customer GST tax invoices and credit notes' },
+  { key: 'shipping.view', module: 'shipping', description: 'View shipping zones, rates, and shipments' },
+  { key: 'shipping.manage', module: 'shipping', description: 'Manage shipping zones, rates, and carrier settings' },
+  { key: 'shipping.shipments.manage', module: 'shipping', description: 'Create shipments, generate AWBs, and update tracking' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -120,6 +123,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'store.orders.refund',
     'store.tax.manage',
     'store.invoices.view',
+    'shipping.view',
+    'shipping.manage',
+    'shipping.shipments.manage',
   ],
 
   manager: [
@@ -137,6 +143,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'store.products.view',
     'store.products.edit',
     'store.orders.view',
+    'shipping.view',
+    'shipping.shipments.manage',
   ],
 
   editor: [

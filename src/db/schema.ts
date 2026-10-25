@@ -355,6 +355,10 @@ export const products = mysqlTable('products', {
   costPrice: int('cost_price'),
   productType: varchar('product_type', { length: 50 }).default('physical').notNull(), // physical, digital
   stockQuantity: int('stock_quantity').default(0).notNull(),
+  weightGrams: int('weight_grams').default(500).notNull(),
+  lengthCm: int('length_cm'),
+  widthCm: int('width_cm'),
+  heightCm: int('height_cm'),
   lowStockThreshold: int('low_stock_threshold').default(5).notNull(),
   trackInventory: boolean('track_inventory').default(true).notNull(),
   trackStock: boolean('track_stock').default(true).notNull(),
@@ -377,6 +381,10 @@ export const productVariants = mysqlTable('product_variants', {
   sku: varchar('sku', { length: 100 }),
   price: int('price').notNull(),
   stockQuantity: int('stock_quantity').default(0).notNull(),
+  weightGrams: int('weight_grams').default(500).notNull(),
+  lengthCm: int('length_cm'),
+  widthCm: int('width_cm'),
+  heightCm: int('height_cm'),
   attributes: json('attributes'), // e.g. { size: "L", color: "Black" }
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -397,6 +405,10 @@ export const orders = mysqlTable('orders', {
   subtotal: int('subtotal').notNull(),
   taxTotal: int('tax_total').default(0).notNull(),
   shippingTotal: int('shipping_total').default(0).notNull(),
+  shippingMethod: varchar('shipping_method', { length: 100 }),
+  shippingCarrier: varchar('shipping_carrier', { length: 100 }),
+  shippingAwb: varchar('shipping_awb', { length: 100 }),
+  trackingNumber: varchar('tracking_number', { length: 100 }),
   discountTotal: int('discount_total').default(0).notNull(),
   codFeePaise: int('cod_fee_paise').default(0).notNull(),
   codFeeTaxPaise: int('cod_fee_tax_paise').default(0).notNull(),
@@ -431,6 +443,7 @@ export const orderItems = mysqlTable('order_items', {
   sku: varchar('sku', { length: 100 }),
   price: int('price').notNull(),
   quantity: int('quantity').default(1).notNull(),
+  weightGrams: int('weight_grams').default(0).notNull(),
   taxClassId: bigint('tax_class_id', { mode: 'number', unsigned: true }),
   hsnCode: varchar('hsn_code', { length: 20 }),
   taxRateBasisPoints: int('tax_rate_basis_points').default(0).notNull(),
@@ -653,4 +666,62 @@ export const donations = mysqlTable('donations', {
   receiptNumber: varchar('receipt_number', { length: 50 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// 26. Shipping (Zones, Rates, Shipments)
+export const shippingZones = mysqlTable('shipping_zones', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 100 }).notNull(),
+  countriesJson: json('countries_json').notNull(),
+  statesJson: json('states_json'),
+  pincodesJson: json('pincodes_json'),
+  isActive: boolean('is_active').default(true).notNull(),
+  priority: int('priority').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const shippingZoneRates = mysqlTable('shipping_zone_rates', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  zoneId: bigint('zone_id', { mode: 'number', unsigned: true }).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  rateType: varchar('rate_type', { length: 50 }).default('weight_based').notNull(), // flat, weight_based, price_tiered
+  minWeightGrams: int('min_weight_grams').default(0).notNull(),
+  maxWeightGrams: int('max_weight_grams'),
+  minOrderPaise: bigint('min_order_paise', { mode: 'number' }).default(0).notNull(),
+  maxOrderPaise: bigint('max_order_paise', { mode: 'number' }),
+  ratePaise: bigint('rate_paise', { mode: 'number' }).default(0).notNull(),
+  estimatedDaysMin: int('estimated_days_min').default(2).notNull(),
+  estimatedDaysMax: int('estimated_days_max').default(5).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const shippingShipments = mysqlTable('shipping_shipments', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  shipmentNumber: varchar('shipment_number', { length: 100 }).notNull().unique(),
+  partner: varchar('partner', { length: 50 }).default('manual').notNull(), // manual, shiprocket, delhivery, fake
+  partnerShipmentId: varchar('partner_shipment_id', { length: 100 }),
+  partnerOrderId: varchar('partner_order_id', { length: 100 }),
+  awb: varchar('awb', { length: 100 }).notNull(),
+  trackingNumber: varchar('tracking_number', { length: 100 }).notNull(),
+  carrierName: varchar('carrier_name', { length: 100 }),
+  status: varchar('status', { length: 50 }).default('manifested').notNull(), // manifested, picked_up, in_transit, out_for_delivery, delivered, rto, cancelled
+  labelUrl: text('label_url'),
+  weightGrams: int('weight_grams').default(500).notNull(),
+  lengthCm: int('length_cm'),
+  widthCm: int('width_cm'),
+  heightCm: int('height_cm'),
+  isCod: boolean('is_cod').default(false).notNull(),
+  codAmountPaise: bigint('cod_amount_paise', { mode: 'number' }).default(0).notNull(),
+  shippingFeePaise: bigint('shipping_fee_paise', { mode: 'number' }).default(0).notNull(),
+  shippedAt: timestamp('shipped_at'),
+  deliveredAt: timestamp('delivered_at'),
+  trackingHistoryJson: json('tracking_history_json'),
+  metadataJson: json('metadata_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
 

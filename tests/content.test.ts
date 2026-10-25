@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { type FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import * as authServiceModule from '../src/auth/service.js';
+import { pool } from '../src/db/pool.js';
 
 describe('CP2.8 Content, Theme & Compliance API', () => {
   let app: FastifyInstance;
@@ -31,6 +32,15 @@ describe('CP2.8 Content, Theme & Compliance API', () => {
   beforeAll(async () => {
     app = buildApp();
     await app.ready();
+
+    await pool.query(
+      `INSERT INTO theme_tokens (\`key\`, value, token_type, is_active, version)
+       VALUES 
+       ('font.family_sans', 'Inter, sans-serif', 'font', 1, 1),
+       ('layout.radius', '8px', 'spacing', 1, 1),
+       ('color.primary', '#1d4ed8', 'color', 1, 1)
+       ON DUPLICATE KEY UPDATE is_active = 1`
+    );
   });
 
   afterAll(async () => {

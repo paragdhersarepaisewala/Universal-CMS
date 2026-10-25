@@ -4,6 +4,7 @@ import { buildApp } from '../src/app.js';
 import * as authServiceModule from '../src/auth/service.js';
 import { moduleRegistry } from '../src/modules/registry.js';
 import { donationModuleManifest } from '../src/modules/donations/index.js';
+import { pool } from '../src/db/pool.js';
 
 describe('Donations & 80G Tax Receipts Engine Suite', () => {
   let app: FastifyInstance;
@@ -24,6 +25,12 @@ describe('Donations & 80G Tax Receipts Engine Suite', () => {
     moduleRegistry.setModuleState('donations', true);
     app = buildApp();
     await app.ready();
+
+    await pool.query(
+      `INSERT INTO donation_campaigns (id, title, slug, goal_amount, raised_amount, description, is_active)
+       VALUES (2, 'Rural Education Initiative 2026', 'rural-education-initiative', 10000000, 3500000, 'Funding digital classroom kits', 1)
+       ON DUPLICATE KEY UPDATE raised_amount = 3500000, is_active = 1`
+    );
   });
 
   afterAll(async () => {
@@ -41,8 +48,10 @@ describe('Donations & 80G Tax Receipts Engine Suite', () => {
       const body = JSON.parse(res.body);
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBeGreaterThanOrEqual(1);
-      expect(body.data[0]).toHaveProperty('progressPercentage');
-      expect(body.data[0].progressPercentage).toBe(35);
+      const campaign = body.data.find((c: any) => c.slug === 'rural-education-initiative');
+      expect(campaign).toBeDefined();
+      expect(campaign).toHaveProperty('progressPercentage');
+      expect(campaign.progressPercentage).toBe(35);
     });
 
     it('returns single campaign details at GET /api/v1/donations/campaigns/:slug', async () => {

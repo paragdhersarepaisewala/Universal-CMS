@@ -468,6 +468,60 @@ Customer Endpoints:
   Order Invoice PDF | GET /api/v1/store/orders/:id/invoice/pdf (authenticated customer or guest token)
 ```
 
+### 5.22 Shipping: Zones & Weight-Based Rates (`SHIP-01`)
+```
+Screen id:          SHIP-01
+Route in GUI:       /admin/shipping/zones
+Module:             shipping
+Permissions:        view = shipping.view, actions = shipping.manage
+
+Data loaded
+  List Zones:       GET /api/v1/admin/shipping/zones
+  Single Zone:      GET /api/v1/admin/shipping/zones/:id
+
+Actions:
+  Create Zone       | POST /api/v1/admin/shipping/zones { name, countries, states, pincodes, priority }
+  Update Zone       | PUT /api/v1/admin/shipping/zones/:id { name, countries, states, pincodes, priority, isActive }
+  Delete Zone       | DELETE /api/v1/admin/shipping/zones/:id
+  Add Rate Tier     | POST /api/v1/admin/shipping/zones/:id/rates { name, rateType, minWeightGrams, maxWeightGrams, minOrderPaise, maxOrderPaise, ratePaise, estimatedDaysMin, estimatedDaysMax }
+```
+
+### 5.23 Shipping: Shipments & AWB Manifestation (`SHIP-02`)
+```
+Screen id:          SHIP-02
+Route in GUI:       /admin/shipping/shipments
+Module:             shipping
+Permissions:        view = shipping.view, actions = shipping.shipments.manage
+
+Data loaded
+  List Shipments:   GET /api/v1/admin/shipping/shipments (query: page, perPage, status)
+  Tracking Detail:  GET /api/v1/admin/shipping/shipments/:id
+  Download Label:   GET /api/v1/admin/shipping/shipments/:id/label
+
+Actions:
+  Manifest Shipment | POST /api/v1/admin/shipping/shipments { orderId, partner, weightGrams, carrierName, shippingFeePaise }
+  Cancel Waybill    | POST /api/v1/admin/shipping/shipments/:id/cancel
+```
+
+### 5.24 Shipping: Carrier Settings & Partner Configuration (`SHIP-03`)
+```
+Screen id:          SHIP-03
+Route in GUI:       /admin/shipping/settings
+Module:             shipping
+Permissions:        view = shipping.view, actions = shipping.manage
+
+Data loaded
+  Settings:         GET /api/v1/admin/shipping/settings
+
+Actions:
+  Update Settings   | PUT /api/v1/admin/shipping/settings { originPincode, originCity, originState, originCountry, defaultPartner, activePartners, disabledBehavior, fallbackRatePaise, freeShippingThresholdPaise, shiprocketApiKey, shiprocketApiSecret, delhiveryApiKey, delhiveryClientName }
+
+Customer / Storefront Endpoints:
+  Calculate Rates   | POST /api/v1/shipping/rates { items, destination: { country, state, pincode }, cod }
+  Serviceability    | POST /api/v1/shipping/serviceability { pincode, weightGrams, cod, partner }
+  Tracking Webhook  | POST /api/v1/shipping/webhook/:partner (inbound status update from carrier)
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -500,4 +554,6 @@ Customer Endpoints:
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.9 API Contract: API Tokens, outbound Webhooks HMAC signing, API.md reference, and Gate 2 sign-off (in-api) |
 | 0.2.0 | 0.2.0 | 2026-10-25 | H2.1 Store Engine: atomic stock reservation, payments, Razorpay webhooks, state machine, order notes, refunds, digital/physical handlers (in-api) |
 | 0.2.1 | 0.2.1 | 2026-10-25 | H2.2 Store Engine: GST tax classes, Indian states/UTs, sequential FY invoices, credit notes, PDF generation, COD rule engine (in-api) |
+| 0.2.2 | 0.2.2 | 2026-10-25 | H2.3 Shipping Engine: zones, weight-based rates, partner adapters (Shiprocket, Delhivery, Manual), shipments, AWBs, live tracking, webhooks (in-api) |
+
 

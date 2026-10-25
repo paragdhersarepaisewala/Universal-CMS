@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { type FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import * as authServiceModule from '../src/auth/service.js';
+import { pool } from '../src/db/pool.js';
 
 describe('Forms & Banners Engine Suite', () => {
   let app: FastifyInstance;
@@ -31,6 +32,7 @@ describe('Forms & Banners Engine Suite', () => {
   beforeAll(async () => {
     app = buildApp();
     await app.ready();
+    await pool.query("DELETE FROM forms WHERE slug = 'feedback'");
   });
 
   afterAll(async () => {

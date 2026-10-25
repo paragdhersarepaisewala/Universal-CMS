@@ -77,6 +77,12 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
     await fastify.register(adminStoreRoutes, { prefix: '/admin/store' });
   }
 
+  const { shippingModuleManifest, adminShippingRoutes } = await import('../modules/shipping/index.js');
+  if (shippingModuleManifest.routes) {
+    await fastify.register(shippingModuleManifest.routes, { prefix: shippingModuleManifest.routesPrefix });
+    await fastify.register(adminShippingRoutes, { prefix: '/admin/shipping' });
+  }
+
   const { donationModuleManifest, adminDonationRoutes } = await import('../modules/donations/index.js');
   if (donationModuleManifest.routes) {
     await fastify.register(donationModuleManifest.routes, { prefix: donationModuleManifest.routesPrefix });

@@ -118,5 +118,40 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI contract specs `STORE-04`, `STORE-05`, `STORE-06` documented in `docs/ADMIN-UI-CONTRACT.md`.
   - Integration test suite in `tests/store-h2-2.test.ts` (20 integration tests passing against real MySQL).
 
+## [0.2.2] - 2026-10-25T21:25:00+05:30
 
-
+### Added
+- Sub-checkpoint CP-H2.3 (Shipping & Delivery Module, Partner Adapters, Rates, Zones, AWB Generation, and Live Tracking):
+  - Database schema additions via migration `0007_shipping_module_h2_3`:
+    - Tables: `shipping_zones`, `shipping_zone_rates`, `shipping_shipments`.
+    - Columns added: `weight_grams`, `length_cm`, `width_cm`, `height_cm` on `products` and `product_variants`; `weight_grams` on `order_items`; `shipping_method`, `shipping_carrier`, `shipping_awb`, `tracking_number` on `orders`.
+    - Seeded default shipping zone "All India - Standard" with 3 weight-tiered rates and default `shipping_settings` in `settings` table.
+  - Partner adapter interface (`ShippingAdapter`) in `src/modules/shipping/adapters/types.ts`:
+    - `calculateRates`: computes available rates by weight and order volume.
+    - `checkServiceability`: verifies destination pincode, max weight, and COD availability.
+    - `createShipment`: manifests shipment and generates carrier AWB & tracking number.
+    - `trackShipment`: queries current tracking status and milestone history.
+    - `cancelShipment`: voids carrier shipment and manifests cancellation.
+    - `getLabel`: generates downloadable shipping and packing slip URLs.
+  - Carrier adapter implementations:
+    - `ManualFlatRateAdapter`: built-in carrier using configured geographical zone rate tiers.
+    - `FakeShippingAdapter`: deterministic offline testing adapter with controllable rate tiers and unserviceable pincodes.
+    - `ShiprocketAdapter`: production-ready adapter integrating with Shiprocket REST APIs for rate estimates, custom orders, and AWB assignment.
+    - `DelhiveryAdapter`: production-ready adapter integrating with Delhivery Express API surface.
+  - Geographical shipping zone engine (`src/modules/shipping/service.ts`) with country, state, and pincode prefix/wildcard pattern matching (`400*`, `110*`).
+  - Free shipping cart threshold support (`freeShippingThresholdPaise`), granting 0 paise delivery fee when cart total exceeds threshold.
+  - Module disable behaviors: supports configurable `block_physical` (rejects physical product checkout with 422 error) and `fallback_flat_rate` (applies fixed flat rate fee) when `shipping` module is toggled off in `moduleRegistry`.
+  - Inbound carrier tracking webhook (`POST /api/v1/shipping/webhook/:partner`): updates shipment milestones, transitions order status to `delivered` and `fulfilled`, and updates line-item `fulfilment_status` to `fulfilled`.
+  - Storefront shipping endpoints:
+    - `POST /api/v1/shipping/rates`: returns available delivery options and rates for cart items.
+    - `POST /api/v1/shipping/serviceability`: checks destination pincode serviceability and COD eligibility.
+    - `POST /api/v1/shipping/webhook/:partner`: inbound tracking status updates from carriers.
+  - Admin shipping endpoints:
+    - `GET /api/v1/admin/shipping/settings`, `PUT /api/v1/admin/shipping/settings`.
+    - `GET /api/v1/admin/shipping/zones`, `POST /api/v1/admin/shipping/zones`, `PUT /api/v1/admin/shipping/zones/:id`, `DELETE /api/v1/admin/shipping/zones/:id`.
+    - `POST /api/v1/admin/shipping/zones/:id/rates`.
+    - `GET /api/v1/admin/shipping/shipments`, `POST /api/v1/admin/shipping/shipments`, `GET /api/v1/admin/shipping/shipments/:id`.
+    - `GET /api/v1/admin/shipping/shipments/:id/label`, `POST /api/v1/admin/shipping/shipments/:id/cancel`.
+  - RBAC permissions registered: `shipping.view`, `shipping.manage`, `shipping.shipments.manage`.
+  - Admin UI contract specs `SHIP-01`, `SHIP-02`, and `SHIP-03` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version bumped to `0.2.2`).
+  - Integration test suite in `tests/shipping.test.ts` (16 tests covering zones, rates, serviceability, partner adapters, manifest generation, tracking webhooks, fulfillment transitions, module disable behaviors, and RBAC).

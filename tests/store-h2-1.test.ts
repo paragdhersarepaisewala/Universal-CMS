@@ -32,6 +32,9 @@ describe('H2.1 Store Engine & Checkout Suite (Real MySQL + Fake Gateway)', () =>
     // Seed test products and clean existing test records
     const connection = await pool.getConnection();
     try {
+      await connection.query('DELETE FROM shipping_shipments');
+      await connection.query('DELETE FROM credit_notes');
+      await connection.query('DELETE FROM invoices');
       await connection.query('DELETE FROM order_items');
       await connection.query('DELETE FROM refunds');
       await connection.query('DELETE FROM payments');

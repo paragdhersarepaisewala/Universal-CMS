@@ -74,6 +74,10 @@ export class ModuleRegistry {
     return this.enabledState.get(moduleName) ?? false;
   }
 
+  public isModuleEnabled(moduleName: string): boolean {
+    return this.isEnabled(moduleName);
+  }
+
   public setModuleState(moduleName: string, enabled: boolean): void {
     const manifest = this.manifests.get(moduleName);
     if (!manifest) {

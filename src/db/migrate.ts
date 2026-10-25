@@ -1,4 +1,4 @@
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { pool } from './pool.js';
 
 export async function runMigrations(): Promise<void> {
@@ -1011,6 +1011,167 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0006_tax_invoices_cod_h2_2 completed.');
+    }
+
+    // Check 0007_shipping_module_h2_3
+    const [rows7] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0007_shipping_module_h2_3']
+    );
+
+    if (rows7.length === 0) {
+      console.log('[Migration] Applying 0007_shipping_module_h2_3...');
+
+      // 1. Shipping Zones
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS shipping_zones (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          countries_json JSON NOT NULL,
+          states_json JSON NULL,
+          pincodes_json JSON NULL,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          priority INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 2. Shipping Zone Rates
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS shipping_zone_rates (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          zone_id BIGINT UNSIGNED NOT NULL,
+          name VARCHAR(100) NOT NULL,
+          rate_type VARCHAR(50) NOT NULL DEFAULT 'weight_based',
+          min_weight_grams INT NOT NULL DEFAULT 0,
+          max_weight_grams INT NULL,
+          min_order_paise BIGINT NOT NULL DEFAULT 0,
+          max_order_paise BIGINT NULL,
+          rate_paise BIGINT NOT NULL DEFAULT 0,
+          estimated_days_min INT NOT NULL DEFAULT 2,
+          estimated_days_max INT NOT NULL DEFAULT 5,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_zone_rates_zone (zone_id),
+          CONSTRAINT fk_zone_rates_zone FOREIGN KEY (zone_id) REFERENCES shipping_zones (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 3. Shipping Shipments
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS shipping_shipments (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          shipment_number VARCHAR(100) NOT NULL UNIQUE,
+          partner VARCHAR(50) NOT NULL DEFAULT 'manual',
+          partner_shipment_id VARCHAR(100) NULL,
+          partner_order_id VARCHAR(100) NULL,
+          awb VARCHAR(100) NOT NULL,
+          tracking_number VARCHAR(100) NOT NULL,
+          carrier_name VARCHAR(100) NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'manifested',
+          label_url TEXT NULL,
+          weight_grams INT NOT NULL DEFAULT 500,
+          length_cm INT NULL,
+          width_cm INT NULL,
+          height_cm INT NULL,
+          is_cod BOOLEAN NOT NULL DEFAULT FALSE,
+          cod_amount_paise BIGINT NOT NULL DEFAULT 0,
+          shipping_fee_paise BIGINT NOT NULL DEFAULT 0,
+          shipped_at TIMESTAMP NULL,
+          delivered_at TIMESTAMP NULL,
+          tracking_history_json JSON NULL,
+          metadata_json JSON NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_shipments_order (order_id),
+          INDEX idx_shipments_awb (awb),
+          INDEX idx_shipments_tracking (tracking_number),
+          INDEX idx_shipments_status (status),
+          CONSTRAINT fk_shipments_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE RESTRICT
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 4. Alter products, product_variants, order_items, orders
+      const addColumnIfNotExists = async (table: string, column: string, definition: string) => {
+        const [existing] = await connection.query<RowDataPacket[]>(
+          `SHOW COLUMNS FROM \`${table}\` LIKE ?`,
+          [column]
+        );
+        if (existing.length === 0) {
+          await connection.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+        }
+      };
+
+      await addColumnIfNotExists('products', 'weight_grams', 'INT NOT NULL DEFAULT 500 AFTER stock_quantity');
+      await addColumnIfNotExists('products', 'length_cm', 'INT NULL AFTER weight_grams');
+      await addColumnIfNotExists('products', 'width_cm', 'INT NULL AFTER length_cm');
+      await addColumnIfNotExists('products', 'height_cm', 'INT NULL AFTER width_cm');
+
+      await addColumnIfNotExists('product_variants', 'weight_grams', 'INT NOT NULL DEFAULT 500 AFTER stock_quantity');
+      await addColumnIfNotExists('product_variants', 'length_cm', 'INT NULL AFTER weight_grams');
+      await addColumnIfNotExists('product_variants', 'width_cm', 'INT NULL AFTER length_cm');
+      await addColumnIfNotExists('product_variants', 'height_cm', 'INT NULL AFTER width_cm');
+
+      await addColumnIfNotExists('order_items', 'weight_grams', 'INT NOT NULL DEFAULT 0 AFTER quantity');
+
+      await addColumnIfNotExists('orders', 'shipping_method', 'VARCHAR(100) NULL AFTER shipping_total');
+      await addColumnIfNotExists('orders', 'shipping_carrier', 'VARCHAR(100) NULL AFTER shipping_method');
+      await addColumnIfNotExists('orders', 'shipping_awb', 'VARCHAR(100) NULL AFTER shipping_carrier');
+      await addColumnIfNotExists('orders', 'tracking_number', 'VARCHAR(100) NULL AFTER shipping_awb');
+
+      // 5. Seed default shipping zone & rates
+      const [existingZones] = await connection.query<RowDataPacket[]>('SELECT id FROM shipping_zones LIMIT 1');
+      if (existingZones.length === 0) {
+        const [res] = await connection.query<ResultSetHeader>(
+          `INSERT INTO shipping_zones (name, countries_json, states_json, pincodes_json, is_active, priority)
+           VALUES ('All India - Standard', ?, NULL, NULL, TRUE, 0)`,
+          [JSON.stringify(['IN'])]
+        );
+        const zoneId = res.insertId;
+
+        await connection.query(
+          `INSERT INTO shipping_zone_rates (zone_id, name, rate_type, min_weight_grams, max_weight_grams, min_order_paise, max_order_paise, rate_paise, estimated_days_min, estimated_days_max, is_active)
+           VALUES 
+           (?, 'Standard Ground Delivery (< 500g)', 'weight_based', 0, 500, 0, NULL, 5000, 3, 7, TRUE),
+           (?, 'Standard Ground Delivery (500g - 2kg)', 'weight_based', 501, 2000, 0, NULL, 9000, 3, 7, TRUE),
+           (?, 'Heavy Ground Delivery (> 2kg)', 'weight_based', 2001, NULL, 0, NULL, 15000, 4, 10, TRUE)`,
+          [zoneId, zoneId, zoneId]
+        );
+      }
+
+      // 6. Seed default shipping settings
+      const defaultShippingSettings = {
+        originPincode: '400001',
+        originCity: 'Mumbai',
+        originState: '27',
+        originCountry: 'IN',
+        defaultPartner: 'manual',
+        activePartners: ['manual', 'fake'],
+        disabledBehavior: 'fallback_flat_rate', // 'fallback_flat_rate' | 'block_physical'
+        fallbackRatePaise: 5000, // Rs 50
+        freeShippingThresholdPaise: 100000, // Rs 1000
+        shiprocketApiKey: '',
+        shiprocketApiSecret: '',
+        delhiveryApiKey: '',
+        delhiveryClientName: '',
+      };
+
+      await connection.query(
+        `INSERT INTO settings (\`key\`, \`value\`, \`group\`, is_public, version)
+         VALUES ('shipping_settings', ?, 'shipping', true, 1)
+         ON DUPLICATE KEY UPDATE version = version + 1`,
+        [JSON.stringify(defaultShippingSettings)]
+      );
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0007_shipping_module_h2_3']
+      );
+
+      console.log('[Migration] 0007_shipping_module_h2_3 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }
