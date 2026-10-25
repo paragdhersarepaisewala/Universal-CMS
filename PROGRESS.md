@@ -13,13 +13,13 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 ## 2. Feature inventory (PM adds missing items for the site type)
 
 ### Authentication and accounts
-- [ ] Signup, login, logout
-- [ ] Email verification on registration (link or one-time code, expiry, resend limit, unverified accounts restricted)
-- [ ] Forgot and reset password
-- [ ] Email verification
-- [ ] Session management and device list
-- [ ] 2FA for admin roles
-- [ ] Login rate limiting and lockout
+- [x] Signup, login, logout
+- [x] Email verification on registration (link or one-time code, expiry, resend limit, unverified accounts restricted)
+- [x] Forgot and reset password
+- [x] Email verification
+- [x] Session management and device list
+- [x] 2FA for admin roles
+- [x] Login rate limiting and lockout
 - [~] Customer profile page: name, email, phone, password change, communication preferences - belongs to client repo
 - [~] Order history with live status and tracking link - belongs to client repo
 - [~] Receipts and invoices viewable and downloadable as PDF - belongs to client repo

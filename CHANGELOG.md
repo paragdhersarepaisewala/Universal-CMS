@@ -25,3 +25,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Dynamic admin navigation endpoint (/api/v1/admin/navigation) filtering items by enabled modules.
 - Admin module management endpoints: GET /api/v1/admin/modules and PATCH /api/v1/admin/modules/:name to toggle module states.
 - Unit and contract test suite proving disabled modules return 404, disappear from navigation, and core modules cannot be disabled.
+- Authentication & Accounts engine under /api/v1/auth:
+  - Signup with email verification token/code generation and optional date-of-birth capture.
+  - Email verification endpoint with expiration and resend rate-limiting (cooldown & window limits).
+  - Login endpoint with password hashing, email verification requirement, and account lockout (temporary lock after 5 consecutive failed attempts).
+  - RFC 6238 TOTP two-factor authentication (2FA) setup and verification for privileged accounts.
+  - Session management in MySQL sessions table with token hashing, IP and user-agent tracking.
+  - Logout endpoint with session revocation.
+  - Forgot password and reset password flow with token invalidation and active session clearing.
+  - Authenticated session inspection endpoint (/api/v1/auth/me).

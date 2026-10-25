@@ -46,6 +46,7 @@ export const users = mysqlTable('users', {
   emailVerifiedAt: timestamp('email_verified_at'),
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   twoFactorSecret: varchar('two_factor_secret', { length: 255 }),
+  dateOfBirth: varchar('date_of_birth', { length: 20 }),
   version: int('version').default(1).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
@@ -58,6 +59,17 @@ export const sessions = mysqlTable('sessions', {
   tokenHash: varchar('token_hash', { length: 255 }).notNull().unique(),
   ipAddress: varchar('ip_address', { length: 45 }),
   userAgent: text('user_agent'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Auth Tokens (email verification, password resets)
+export const authTokens = mysqlTable('auth_tokens', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  userId: bigint('user_id', { mode: 'number', unsigned: true }).notNull(),
+  tokenType: varchar('token_type', { length: 50 }).notNull(), // email_verify, password_reset
+  tokenHash: varchar('token_hash', { length: 255 }).notNull().unique(),
+  code: varchar('code', { length: 10 }),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

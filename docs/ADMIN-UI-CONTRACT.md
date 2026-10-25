@@ -107,7 +107,7 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 ### Core (always on)
 | ID | Screen | Route | View permission | Status |
 |---|---|---|---|---|
-| SCR-CORE-LOGIN | Admin login | /admin/login | public | planned |
+| SCR-CORE-LOGIN | Admin login | /admin/login | public | in-api |
 | SCR-CORE-DASH | Dashboard | /admin | core.dashboard.view | planned |
 | SCR-CORE-PAGES | Pages list | /admin/pages | core.pages.view | planned |
 | SCR-CORE-PAGE-EDIT | Page content editor (blocks) | /admin/pages/:id | core.pages.edit | planned |
@@ -312,3 +312,4 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 |---|---|---|---|
 | 0.1.0 | 0.1.0 | 2026-10-25 | Initial skeleton and CP2.1 core setup |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.3 Module toggles API and navigation endpoint (in-api) |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.4 Auth API: signup, login, lockout, 2FA, password resets (in-api) |

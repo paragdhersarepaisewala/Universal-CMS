@@ -343,6 +343,38 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0002_core_schema_cp2_2 completed.');
+    }
+
+    // Check 0003_auth_tokens
+    const [rows3] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0003_auth_tokens']
+    );
+
+    if (rows3.length === 0) {
+      console.log('[Migration] Applying 0003_auth_tokens...');
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS auth_tokens (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          user_id BIGINT UNSIGNED NOT NULL,
+          token_type VARCHAR(50) NOT NULL,
+          token_hash VARCHAR(255) NOT NULL UNIQUE,
+          code VARCHAR(10) NULL,
+          expires_at TIMESTAMP NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_auth_tokens_user (user_id),
+          INDEX idx_auth_tokens_type (token_type),
+          INDEX idx_auth_tokens_expires (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0003_auth_tokens']
+      );
+
+      console.log('[Migration] 0003_auth_tokens completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }
