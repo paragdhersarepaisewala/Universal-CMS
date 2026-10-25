@@ -26,19 +26,19 @@ Status Legend:
 - [x] Session management and device list (User session tracking with IP and user-agent in src/auth/service.ts)
 - [x] 2FA for admin roles (TOTP two-factor authentication challenge and verification in AuthService)
 - [x] Login rate limiting and lockout (Failed attempts counter and lockout threshold in AuthService)
-- [ ] Customer profile API: get/update profile, phone, password change, communication preferences (cms-core)
+- [x] Customer profile API: get/update profile, phone, password change, communication preferences (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented in src/modules/store/customer-service.ts with profile retrieval/update, phone, DOB, JSON communication preferences, and Argon2id password change with active session invalidation, verified in tests/customer-accounts.test.ts
 - [~] Customer profile page UI - belongs to client repo
-- [ ] Customer order history API: list orders, tracking link, live status (cms-core)
+- [x] Customer order history API: list orders, tracking link, live status (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented in src/modules/store/customer-service.ts & src/modules/store/customer-routes.ts (GET /api/v1/store/customer/orders, GET /api/v1/store/customer/orders/:id) returning order totals, live statuses, carrier tracking URLs, line items, and digital download links, verified in tests/customer-accounts.test.ts
 - [~] Order history UI with live status and tracking link - belongs to client repo
 - [x] Receipts and invoices PDF/printable HTML generation endpoint (cms-core) - [2026-10-25 20:30 UTC+5:30] Pure JS PDFKit streaming generation in src/modules/store/invoice.ts, served via GET /api/v1/store/orders/:id/invoice/pdf, GET /api/v1/admin/store/invoices/:id/pdf, and GET /api/v1/admin/store/credit-notes/:id/pdf, verified in tests/store-h2-2.test.ts
 - [~] Receipts and invoices viewable and downloadable as PDF UI - belongs to client repo
-- [ ] Customer delivery addresses API: CRUD, default address, address table (cms-core)
+- [x] Customer delivery addresses API: CRUD, default address, address table (cms-core) - [2026-10-25 22:10 UTC+5:30] customer_addresses table created via migration 0009_customer_accounts_h2_4 with full CRUD and atomic default address toggling, verified in tests/customer-accounts.test.ts
 - [~] Delivery addresses UI: add, edit, delete, set default - belongs to client repo
-- [ ] Donor donation history and 80G tax receipts retrieval API (cms-core)
+- [x] Donor donation history and 80G tax receipts retrieval API (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented in src/modules/donations/* (GET /api/v1/donations/my-donations) returning donor contributions, PAN details, and 80G tax exemption receipt numbers, verified in tests/customer-accounts.test.ts
 - [~] Donation history and receipts UI - belongs to client repo
-- [ ] Customer reorder and return request submission API (cms-core)
+- [x] Customer reorder and return request submission API (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented reorder stock validation payload generation (POST /api/v1/store/customer/orders/:id/reorder) and return request lifecycle (POST /orders/:id/return-request, GET /return-requests, POST /admin/store/return-requests/:id/transition), verified in tests/customer-accounts.test.ts
 - [~] Reorder and return request UI from order history - belongs to client repo
-- [ ] Account deletion and personal data export (DPDP Act) request API (cms-core)
+- [x] Account deletion and personal data export (DPDP Act) request API (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented DPDP full data export (POST /api/v1/store/customer/export-data) and password-verified account deletion (POST /api/v1/store/customer/delete-account) with user record anonymization, addresses/sessions/wishlist erasure, and audit tracking in customer_data_requests, verified in tests/customer-accounts.test.ts
 - [~] Account deletion and data export request UI - belongs to client repo
 
 ### Roles and permissions
@@ -90,10 +90,10 @@ Status Legend:
 - [~] Shipping partner frontend integration and customer tracking view - belongs to client repo
 - [x] GST tax configuration, formal GST invoices, and credit notes - [2026-10-25 20:30 UTC+5:30] Full GST engine in src/modules/store/tax.ts & src/modules/store/invoice.ts supporting all 36 Indian states/UTs, UTGST without legislature, intra/interstate CGST/SGST/UTGST/IGST/CESS splitting, sequential Indian FY invoice/credit note numbers (INV/YYYY-YY/NNNN, CN/YYYY-YY/NNNN) with SELECT FOR UPDATE, verified in tests/store-h2-2.test.ts
 - [ ] Abandoned cart detection job and per-email on/off switches (order confirmation job enqueued; abandoned cart detector and email switches pending)
-- [ ] Admin customer management API: list, segments, notes, order history, CSV export (cms-core)
+- [x] Admin customer management API: list, segments, notes, order history, CSV export (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented in src/modules/store/customer-routes.ts (GET /api/v1/admin/store/customers, GET /export, GET /:id, PUT /:id/segment, POST /:id/notes) with order metrics, customer notes, VIP/wholesale segmentation, and CSV streaming, verified in tests/customer-accounts.test.ts
 - [~] Admin customer management UI - belongs to client repo
 - [x] Reviews and ratings with moderation (StoreService reviews, moderation workflow, tested in tests/store.test.ts)
-- [ ] Wishlist API: add, remove, and list customer wishlist items (cms-core)
+- [x] Wishlist API: add, remove, and list customer wishlist items (cms-core) - [2026-10-25 22:10 UTC+5:30] customer_wishlist table created via migration 0009_customer_accounts_h2_4 with add, remove, and list endpoints joining active product catalogs, verified in tests/customer-accounts.test.ts
 - [~] Wishlist storefront UI - belongs to client repo
 - [ ] Meta catalog product feed XML/CSV endpoint (cms-core)
 - [~] Meta catalog business manager setup - belongs to client repo

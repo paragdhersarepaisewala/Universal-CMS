@@ -577,6 +577,48 @@ Storefront / Customer endpoints:
   Verify License    | POST /api/v1/digital/licenses/verify { licenseKey }
 ```
 
+### 5.26 Store: Customer Management & Return Requests (`STORE-07`)
+```
+Screen id:          STORE-07
+Route in GUI:       /admin/store/customers
+Module:             store
+Permissions:        view = store.customers.view, actions = store.customers.manage
+
+Data loaded
+  Customers List:   GET /api/v1/admin/store/customers (query: page, perPage, search, segment)
+  Single Customer:  GET /api/v1/admin/store/customers/:id
+  CSV Export:       GET /api/v1/admin/store/customers/export
+  Return Requests:  GET /api/v1/admin/store/return-requests (query: status)
+
+Customer Row Fields:
+  id, name, email, phone, customerSegment, totalOrders, totalSpentPaise, isActive, createdAt
+
+Customer Detail Fields:
+  profile:          name, email, phone, dateOfBirth, communicationPreferences, customerSegment, totalOrders, totalSpentPaise
+  addresses:        list of saved addresses (with default flag)
+  orders:           order history with total, status, and paymentStatus
+  wishlist:         saved wishlist products with live price and stock
+  returnRequests:   item returns with reasons and statuses
+  notes:            internal staff notes with author and timestamp
+
+Actions:
+  Update Segment    | PUT /api/v1/admin/store/customers/:id/segment { segment } | store.customers.manage | assigns segment | audit customer.segment.updated
+  Add Staff Note    | POST /api/v1/admin/store/customers/:id/notes { note } | store.customers.manage | appends note | audit customer.note.created
+  Transition Return | POST /api/v1/admin/store/return-requests/:id/transition { status, adminNotes } | store.customers.manage | updates return status | audit customer.return.transitioned
+
+Storefront / Customer Endpoints:
+  Customer Profile  | GET /api/v1/store/customer/profile
+  Update Profile    | PUT /api/v1/store/customer/profile { name, phone, dateOfBirth, communicationPreferences }
+  Change Password   | POST /api/v1/store/customer/change-password { currentPassword, newPassword }
+  Saved Addresses   | GET, POST /api/v1/store/customer/addresses, PUT, DELETE /api/v1/store/customer/addresses/:id, POST /api/v1/store/customer/addresses/:id/default
+  Wishlist          | GET /api/v1/store/customer/wishlist, POST /api/v1/store/customer/wishlist { productId }, DELETE /api/v1/store/customer/wishlist/:productId
+  Order History     | GET /api/v1/store/customer/orders, GET /api/v1/store/customer/orders/:id
+  Reorder           | POST /api/v1/store/customer/orders/:id/reorder (returns validated items ready for checkout)
+  Return Request    | POST /api/v1/store/customer/orders/:id/return-request { orderItemId, reason }
+  DPDP Data Export  | POST /api/v1/store/customer/export-data (returns full user data payload)
+  DPDP Deletion     | POST /api/v1/store/customer/delete-account { passwordConfirm } (anonymizes PII, erases addresses/wishlist/sessions)
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -611,5 +653,7 @@ Storefront / Customer endpoints:
 | 0.2.1 | 0.2.1 | 2026-10-25 | H2.2 Store Engine: GST tax classes, Indian states/UTs, sequential FY invoices, credit notes, PDF generation, COD rule engine (in-api) |
 | 0.2.2 | 0.2.2 | 2026-10-25 | H2.3 Shipping Engine: zones, weight-based rates, partner adapters (Shiprocket, Delhivery, Manual), shipments, AWBs, live tracking, webhooks (in-api) |
 | 0.2.3 | 0.2.3 | 2026-10-25 | H2.3D Digital Delivery: digital assets, license key pools, tokenized downloads, order entitlements, revocation on refund (in-api) |
+| 0.2.4 | 0.2.4 | 2026-10-25 | H2.4 Customer Accounts: customer profiles, saved addresses, wishlist, order history, return requests, DPDP export & deletion, admin management (in-api) |
+
 
 

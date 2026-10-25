@@ -78,6 +78,8 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'shipping.shipments.manage', module: 'shipping', description: 'Create shipments, generate AWBs, and update tracking' },
   { key: 'digital.view', module: 'digital', description: 'View digital assets, entitlements, and license keys' },
   { key: 'digital.manage', module: 'digital', description: 'Manage digital product files, license pools, and revoke entitlements' },
+  { key: 'store.customers.view', module: 'store', description: 'View customer directory, profiles, and order history' },
+  { key: 'store.customers.manage', module: 'store', description: 'Manage customer segments, staff notes, and return requests' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -130,6 +132,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'shipping.shipments.manage',
     'digital.view',
     'digital.manage',
+    'store.customers.view',
+    'store.customers.manage',
   ],
 
   manager: [
@@ -149,6 +153,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'store.orders.view',
     'shipping.view',
     'shipping.shipments.manage',
+    'store.customers.view',
   ],
 
   editor: [
@@ -168,6 +173,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'core.email.view',
     'core.logs.view',
     'store.orders.view',
+    'store.customers.view',
   ],
 
   // customer has zero admin panel permissions

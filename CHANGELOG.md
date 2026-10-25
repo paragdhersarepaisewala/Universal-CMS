@@ -185,3 +185,41 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI Contract specs `DIGITAL-01` and `DIGITAL-02` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.3`).
   - Integration test suite in `tests/digital-delivery.test.ts` (10 real MySQL tests covering asset creation, license pool loading, digital checkout, entitlement issuance, auto-completion, download quota limits, expiration, public verification, refund revocation, admin manual revocation, and module disablement).
 
+## [0.2.4] - 2026-10-25T22:15:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.4 (Customer Accounts, Profiles, Addresses, Wishlist, Order History, Reorder, Return Requests, DPDP Compliance, and Admin Management):
+  - Database schema additions via migration `0009_customer_accounts_h2_4`:
+    - Columns added: `phone`, `communication_preferences` (JSON), and `customer_segment` on `users` table.
+    - Tables: `customer_addresses`, `customer_wishlist`, `order_return_requests`, `customer_notes`, `customer_data_requests`.
+    - Cascade foreign keys to `users`, `orders`, and `products`.
+  - Customer Service Engine (`src/modules/store/customer-service.ts`):
+    - Profile management: profile retrieval and update, phone, DOB, JSON communication preferences, and spend/order metric aggregation.
+    - Password security: `changePassword` verifying current password with Argon2id and invalidating all active sessions on change.
+    - Delivery addresses: full CRUD with atomic default address flag toggling across user addresses.
+    - Wishlist management: idempotent product saving, removal, and listing joined against live catalog availability and pricing.
+    - Order history: paginated order retrieval matching customer ID and email, shipment tracking URLs, invoice numbers, line items, and digital download links.
+    - Reorder engine: `prepareReorder` validating current catalog availability, stock levels, and generating checkout-ready payloads.
+    - Return request lifecycle: customer submission on delivered/completed physical orders (`submitReturnRequest`), exclusion of digital products, duplicate prevention, and admin approval/rejection state transitions (`adminTransitionReturnRequest`).
+    - DPDP Act Compliance: personal data export compiling complete profile, addresses, orders, return requests, reviews, and wishlist; password-verified account deletion anonymizing user record, wiping addresses, wishlist, and active sessions.
+    - Donor donation history: `GET /api/v1/donations/my-donations` returning donor contributions, PAN details, and 80G tax exemption receipts.
+    - Admin customer directory: paginated customer list with spend metrics, search filter, segment assignment (`standard`, `vip`, `wholesale`, `at_risk`), internal staff notes, and CSV streaming export.
+  - Storefront & Customer Endpoints (`src/modules/store/customer-routes.ts`):
+    - `GET /api/v1/store/customer/profile`, `PUT /api/v1/store/customer/profile`
+    - `POST /api/v1/store/customer/change-password`
+    - `GET`, `POST /api/v1/store/customer/addresses`, `PUT`, `DELETE /api/v1/store/customer/addresses/:id`, `POST /api/v1/store/customer/addresses/:id/default`
+    - `GET`, `POST /api/v1/store/customer/wishlist`, `DELETE /api/v1/store/customer/wishlist/:productId`
+    - `GET /api/v1/store/customer/orders`, `GET /api/v1/store/customer/orders/:id`
+    - `POST /api/v1/store/customer/orders/:id/reorder`
+    - `POST /api/v1/store/customer/orders/:id/return-request`, `GET /api/v1/store/customer/return-requests`
+    - `POST /api/v1/store/customer/export-data`, `POST /api/v1/store/customer/delete-account`
+    - `GET /api/v1/donations/my-donations`
+  - Admin Endpoints (`src/modules/store/customer-routes.ts`):
+    - `GET /api/v1/admin/store/customers`, `GET /api/v1/admin/store/customers/export`, `GET /api/v1/admin/store/customers/:id`
+    - `PUT /api/v1/admin/store/customers/:id/segment`, `POST /api/v1/admin/store/customers/:id/notes`
+    - `GET /api/v1/admin/store/return-requests`, `POST /api/v1/admin/store/return-requests/:id/transition`
+  - RBAC Permissions: `store.customers.view` and `store.customers.manage`.
+  - Admin UI Contract spec `STORE-07` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.4`).
+  - Integration test suite in `tests/customer-accounts.test.ts` (12 real MySQL tests covering profile updates, password change, address CRUD, default toggles, wishlist, order history, reorder validation, return requests, DPDP export, DPDP deletion, admin directory, CSV export, and RBAC security).
+
+

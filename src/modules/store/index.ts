@@ -14,6 +14,7 @@ import { authenticate } from '../../auth/middleware.js';
 import { requirePermission } from '../../rbac/middleware.js';
 import { OrderStatus } from './state-machine.js';
 import { getPaymentGateway } from './payment-gateway.js';
+import { customerStorefrontRoutes, customerAdminRoutes } from './customer-routes.js';
 
 const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // 1. GET /store/products - Public product catalog
@@ -564,6 +565,9 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return reply.send({ data: review });
     }
   );
+
+  // Customer account & profile storefront routes
+  await fastify.register(customerStorefrontRoutes, { prefix: '/customer' });
 };
 
 export const adminStoreRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
@@ -1269,12 +1273,15 @@ export const adminStoreRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
       return reply.send(pdfBuffer);
     }
   );
+
+  // Customer admin routes (customers directory, notes, segments, return requests)
+  await fastify.register(customerAdminRoutes);
 };
 
 export const storeModuleManifest: ModuleManifest = {
   name: 'store',
-  version: '0.2.0',
-  description: 'Ecommerce catalog, inventory, cart, checkout, payments, taxes, invoices, and orders',
+  version: '0.2.4',
+  description: 'Ecommerce catalog, inventory, cart, checkout, payments, taxes, invoices, orders, customers, and wishlist',
   isCore: false,
   dependsOn: ['media'],
   permissions: [
@@ -1285,6 +1292,8 @@ export const storeModuleManifest: ModuleManifest = {
     { key: 'store.orders.refund', description: 'Issue full and partial refunds for orders' },
     { key: 'store.tax.manage', description: 'Manage GST tax classes, rules, and store tax/COD configuration' },
     { key: 'store.invoices.view', description: 'View and download customer GST tax invoices and credit notes' },
+    { key: 'store.customers.view', description: 'View customer directory, profiles, and order history' },
+    { key: 'store.customers.manage', description: 'Manage customer segments, staff notes, and return requests' },
   ],
   adminNav: [
     {
@@ -1309,11 +1318,18 @@ export const storeModuleManifest: ModuleManifest = {
       order: 32,
     },
     {
+      id: 'store-customers',
+      label: 'Customers',
+      route: '/admin/store/customers',
+      permission: 'store.customers.view',
+      order: 33,
+    },
+    {
       id: 'store-tax-cod',
       label: 'Tax & COD',
       route: '/admin/store/settings/tax-cod',
       permission: 'store.tax.manage',
-      order: 33,
+      order: 34,
     },
   ],
   routesPrefix: '/store',

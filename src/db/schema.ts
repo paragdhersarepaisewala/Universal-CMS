@@ -40,6 +40,7 @@ export const users = mysqlTable('users', {
   id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
+  phone: varchar('phone', { length: 20 }),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   roleId: bigint('role_id', { mode: 'number', unsigned: true }).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
@@ -47,6 +48,8 @@ export const users = mysqlTable('users', {
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   twoFactorSecret: varchar('two_factor_secret', { length: 255 }),
   dateOfBirth: varchar('date_of_birth', { length: 20 }),
+  communicationPreferences: json('communication_preferences'),
+  customerSegment: varchar('customer_segment', { length: 50 }).default('standard').notNull(),
   version: int('version').default(1).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
@@ -771,6 +774,66 @@ export const digitalEntitlements = mysqlTable('digital_entitlements', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
 });
+
+// Customer Delivery Addresses
+export const customerAddresses = mysqlTable('customer_addresses', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  userId: bigint('user_id', { mode: 'number', unsigned: true }).notNull(),
+  fullName: varchar('full_name', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 20 }).notNull(),
+  addressLine1: varchar('address_line1', { length: 255 }).notNull(),
+  addressLine2: varchar('address_line2', { length: 255 }),
+  city: varchar('city', { length: 100 }).notNull(),
+  state: varchar('state', { length: 100 }).notNull(),
+  stateCode: varchar('state_code', { length: 10 }),
+  postalCode: varchar('postal_code', { length: 20 }).notNull(),
+  country: varchar('country', { length: 10 }).default('IN').notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+// Customer Wishlist
+export const customerWishlist = mysqlTable('customer_wishlist', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  userId: bigint('user_id', { mode: 'number', unsigned: true }).notNull(),
+  productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Order Return / Refund Requests
+export const orderReturnRequests = mysqlTable('order_return_requests', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  orderItemId: bigint('order_item_id', { mode: 'number', unsigned: true }).notNull(),
+  customerId: bigint('customer_id', { mode: 'number', unsigned: true }).notNull(),
+  reason: text('reason').notNull(),
+  status: varchar('status', { length: 30 }).default('pending').notNull(), // pending, approved, rejected, completed
+  adminNotes: text('admin_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+// Customer Notes (Admin Staff Internal Notes)
+export const customerNotes = mysqlTable('customer_notes', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  customerId: bigint('customer_id', { mode: 'number', unsigned: true }).notNull(),
+  authorId: bigint('author_id', { mode: 'number', unsigned: true }).notNull(),
+  note: text('note').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Customer DPDP Data Requests (Export & Deletion)
+export const customerDataRequests = mysqlTable('customer_data_requests', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  userId: bigint('user_id', { mode: 'number', unsigned: true }).notNull(),
+  requestType: varchar('request_type', { length: 30 }).notNull(), // export, delete
+  status: varchar('status', { length: 30 }).default('pending').notNull(), // pending, completed, rejected
+  exportPayload: json('export_payload'),
+  requestedAt: timestamp('requested_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+});
+
 
 
 

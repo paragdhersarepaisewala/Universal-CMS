@@ -111,6 +111,23 @@ const donationRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
     }
   );
+
+  // 4. GET /donations/my-donations - Authenticated donor history and 80G tax receipts
+  fastify.get(
+    '/my-donations',
+    {
+      preHandler: [requireModule('donations'), authenticate],
+      schema: {
+        description: 'Get authenticated donor donation history and 80G tax exemption receipts',
+        tags: ['Donations'],
+      },
+    },
+    async (req, reply) => {
+      const user = (req as any).user;
+      const history = await DonationService.listCustomerDonations(user.email);
+      return reply.send({ data: history });
+    }
+  );
 };
 
 export const adminDonationRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {

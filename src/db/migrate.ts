@@ -1257,6 +1257,124 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0008_digital_delivery_h2_3d completed.');
+    }
+
+    // Check 0009_customer_accounts_h2_4
+    const [rows9] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0009_customer_accounts_h2_4']
+    );
+
+    if (rows9.length === 0) {
+      console.log('[Migration] Applying 0009_customer_accounts_h2_4...');
+
+      const addColumnIfNotExists = async (table: string, column: string, definition: string) => {
+        const [existing] = await connection.query<RowDataPacket[]>(
+          `SHOW COLUMNS FROM \`${table}\` LIKE ?`,
+          [column]
+        );
+        if (existing.length === 0) {
+          await connection.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+        }
+      };
+
+      // 1. Add phone, communication_preferences, customer_segment to users table
+      await addColumnIfNotExists('users', 'phone', 'VARCHAR(20) NULL AFTER email');
+      await addColumnIfNotExists('users', 'communication_preferences', 'JSON NULL AFTER date_of_birth');
+      await addColumnIfNotExists('users', 'customer_segment', "VARCHAR(50) NOT NULL DEFAULT 'standard' AFTER communication_preferences");
+
+      // 2. Customer Delivery Addresses Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS customer_addresses (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          user_id BIGINT UNSIGNED NOT NULL,
+          full_name VARCHAR(255) NOT NULL,
+          phone VARCHAR(20) NOT NULL,
+          address_line1 VARCHAR(255) NOT NULL,
+          address_line2 VARCHAR(255) NULL,
+          city VARCHAR(100) NOT NULL,
+          state VARCHAR(100) NOT NULL,
+          state_code VARCHAR(10) NULL,
+          postal_code VARCHAR(20) NOT NULL,
+          country VARCHAR(10) NOT NULL DEFAULT 'IN',
+          is_default BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_addr_user (user_id),
+          CONSTRAINT fk_addr_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 3. Customer Wishlist Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS customer_wishlist (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          user_id BIGINT UNSIGNED NOT NULL,
+          product_id BIGINT UNSIGNED NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uk_user_product (user_id, product_id),
+          INDEX idx_wishlist_user (user_id),
+          INDEX idx_wishlist_product (product_id),
+          CONSTRAINT fk_wishlist_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          CONSTRAINT fk_wishlist_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 4. Order Return / Refund Requests Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS order_return_requests (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          order_item_id BIGINT UNSIGNED NOT NULL,
+          customer_id BIGINT UNSIGNED NOT NULL,
+          reason TEXT NOT NULL,
+          status VARCHAR(30) NOT NULL DEFAULT 'pending',
+          admin_notes TEXT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_return_customer (customer_id),
+          INDEX idx_return_order (order_id),
+          CONSTRAINT fk_return_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+          CONSTRAINT fk_return_item FOREIGN KEY (order_item_id) REFERENCES order_items (id) ON DELETE CASCADE,
+          CONSTRAINT fk_return_customer FOREIGN KEY (customer_id) REFERENCES users (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 5. Customer Notes Table (Admin Customer Management)
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS customer_notes (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          customer_id BIGINT UNSIGNED NOT NULL,
+          author_id BIGINT UNSIGNED NOT NULL,
+          note TEXT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_notes_customer (customer_id),
+          CONSTRAINT fk_notes_customer FOREIGN KEY (customer_id) REFERENCES users (id) ON DELETE CASCADE,
+          CONSTRAINT fk_notes_author FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 6. Customer Data Requests Table (DPDP Act Data Export and Deletion)
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS customer_data_requests (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          user_id BIGINT UNSIGNED NOT NULL,
+          request_type VARCHAR(30) NOT NULL,
+          status VARCHAR(30) NOT NULL DEFAULT 'pending',
+          export_payload JSON NULL,
+          requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          completed_at TIMESTAMP NULL,
+          INDEX idx_data_req_user (user_id),
+          CONSTRAINT fk_data_req_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0009_customer_accounts_h2_4']
+      );
+
+      console.log('[Migration] 0009_customer_accounts_h2_4 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }

@@ -210,4 +210,21 @@ export class DonationService {
 
     return campaignId ? inMemoryDonations.filter(d => d.campaignId === campaignId) : inMemoryDonations;
   }
+
+  static async listCustomerDonations(donorEmail: string): Promise<DonationRecord[]> {
+    try {
+      const rows = await db.select().from(donations).where(eq(donations.donorEmail, donorEmail.toLowerCase())).orderBy(desc(donations.createdAt));
+      if (rows.length > 0) {
+        return rows.map(r => ({
+          ...r,
+          status: r.status as DonationRecord['status'],
+          createdAt: r.createdAt.toISOString(),
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    return inMemoryDonations.filter(d => d.donorEmail.toLowerCase() === donorEmail.toLowerCase());
+  }
 }
