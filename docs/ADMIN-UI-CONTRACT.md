@@ -288,6 +288,54 @@ Contract tests:     password never returned by GET; blank password keeps the sto
                     role without permission gets 403.
 ```
 
+### SCR-CORE-TOKENS  API Access Tokens Management
+```
+Admin route:        /admin/tokens
+Module:             core
+Purpose:            Issue, list, and revoke API access tokens with granular permission scopes.
+Permissions:        view = core.settings.view, actions = core.settings.edit
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/tokens
+  Response fields:  id, name, tokenPrefix, scopes (array of string), userId, lastUsedAt, createdAt, expiresAt
+
+Fields:
+  Token name      | name     | text     | yes | Human-readable descriptor (e.g. Zapier Integration)
+  Scopes          | scopes   | multiselect | yes | read, write, admin, or resource-specific keys
+  Expiration      | expiresAt | datetime | no  | Optional validity deadline
+
+Actions
+  Create token    | POST /api/v1/admin/tokens | core.settings.edit | display modal with raw token string (one-time view) | audit tokens.created | none | none
+  Revoke token    | DELETE /api/v1/admin/tokens/:id | core.settings.edit | confirm dialog, remove from list | audit tokens.revoked | none | none
+
+Notes shown on screen: The full API token is only visible once upon generation.
+Contract tests:     Unauthorized returns 401; non-admin gets 403; tokenHash is never exposed in responses.
+```
+
+### SCR-CORE-WEBHOOKS  Outbound Webhook Subscriptions
+```
+Admin route:        /admin/webhooks
+Module:             core
+Purpose:            Register webhook endpoints, configure events, and test HMAC-signed delivery.
+Permissions:        view = core.settings.view, actions = core.settings.edit
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/webhooks
+  Response fields:  id, url, events (array of string), secret, isActive, createdAt
+
+Fields:
+  Endpoint URL    | url      | url      | yes | Destination HTTPS URL
+  Trigger Events  | events   | multiselect | yes | page.published, user.registered, order.created, or * (wildcard)
+  Custom Secret   | secret   | text     | no  | Optional custom signing secret; auto-generated if omitted
+
+Actions
+  Register        | POST /api/v1/admin/webhooks | core.settings.edit | toast, add to list | audit webhooks.registered | none | none
+  Test dispatch   | POST /api/v1/admin/webhooks/test { event, payload } | core.settings.edit | sends test event, returns dispatched count | audit webhooks.tested | none | none
+  Delete webhook  | DELETE /api/v1/admin/webhooks/:id | core.settings.edit | confirm dialog, remove from list | audit webhooks.deleted | none | none
+
+Contract tests:     HMAC-SHA256 signature verification; wildcard * match; unauthorized returns 401; editor returns 403.
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -317,3 +365,5 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.6 Email engine: SMTP AES-256 encrypted settings, test send, 14 automation triggers, templates, queue with retry backoff, marketing unsubscribe (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.7 Cache layer: memory and file drivers, tag-based invalidation, admin cache status and purge endpoints (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.8 Content, theme, and compliance API: pages, blocks, menus, media, SEO, redirects, India legal drafts, consent logs, site settings, and audit logging (in-api) |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.9 API Contract: API Tokens, outbound Webhooks HMAC signing, API.md reference, and Gate 2 sign-off (in-api) |
+

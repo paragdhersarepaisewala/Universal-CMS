@@ -16,6 +16,8 @@ import { adminRedirectsRoutes } from './admin/redirects.js';
 import { adminLegalRoutes } from './admin/legal.js';
 import { adminSettingsRoutes } from './admin/settings.js';
 import { adminAuditRoutes } from './admin/audit.js';
+import { adminTokensRoutes } from './admin/tokens.js';
+import { adminWebhooksRoutes } from './admin/webhooks.js';
 import { blogModuleManifest } from '../modules/blog/index.js';
 import { storeModuleManifest } from '../modules/store/index.js';
 
@@ -46,6 +48,8 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
   await fastify.register(adminLegalRoutes, { prefix: '/admin/legal' });
   await fastify.register(adminSettingsRoutes, { prefix: '/admin/settings' });
   await fastify.register(adminAuditRoutes, { prefix: '/admin/logs/audit' });
+  await fastify.register(adminTokensRoutes, { prefix: '/admin/tokens' });
+  await fastify.register(adminWebhooksRoutes, { prefix: '/admin/webhooks' });
 
   // Optional module routes
   if (blogModuleManifest.routes) {

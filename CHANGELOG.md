@@ -70,3 +70,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - User cookie consent logging endpoint (`POST /api/v1/cookies/consent`) and administrative consent audit viewer.
   - General site settings API with tax, timezone, currency, invoice sequence numbers, and version conflict checks.
   - Comprehensive administrative audit trail logging actor user ID, action, entity, before/after snapshots, and IP addresses.
+- API Contract, API Tokens, Webhooks & Gate 2 (CP2.9):
+  - API Token Service (`src/api-tokens/service.ts`) with `cms_live_` prefixed cryptographic token generation, SHA-256 storage, and granular permission scopes (`read`, `write`, `admin`).
+  - Admin API token endpoints (`/api/v1/admin/tokens`) allowing tokens to be listed, generated, and revoked with audit logging.
+  - Outbound Webhooks Service (`src/webhooks/service.ts`) with HMAC SHA-256 signature calculation, event filtering, wildcard subscription support, and job dispatching.
+  - Admin webhook endpoints (`/api/v1/admin/webhooks`) for subscription registration, testing, and lifecycle management.
+  - Complete API documentation reference guide (`docs/API.md`) detailing authentication, error envelopes, pagination, and all endpoint categories.
+  - Updated Admin UI contract (`docs/ADMIN-UI-CONTRACT.md`) adding screen specifications for `SCR-CORE-TOKENS` and `SCR-CORE-WEBHOOKS`.
+
