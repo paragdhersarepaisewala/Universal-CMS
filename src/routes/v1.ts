@@ -4,6 +4,7 @@ import { authRoutes } from './auth.js';
 import { adminModulesRoutes } from './admin/modules.js';
 import { adminRbacRoutes } from './admin/rbac.js';
 import { adminEmailRoutes } from './admin/email.js';
+import { adminCacheRoutes } from './admin/cache.js';
 import { publicEmailRoutes } from './email.js';
 import { blogModuleManifest } from '../modules/blog/index.js';
 import { storeModuleManifest } from '../modules/store/index.js';
@@ -22,6 +23,7 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
   await fastify.register(adminModulesRoutes, { prefix: '/admin' });
   await fastify.register(adminRbacRoutes, { prefix: '/admin' });
   await fastify.register(adminEmailRoutes, { prefix: '/admin/email' });
+  await fastify.register(adminCacheRoutes, { prefix: '/admin/cache' });
 
   // Optional module routes
   if (blogModuleManifest.routes) {

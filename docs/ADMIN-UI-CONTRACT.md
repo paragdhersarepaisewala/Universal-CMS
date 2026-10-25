@@ -126,7 +126,7 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 | SCR-CORE-EMAIL-LOG | Email log | /admin/email/log | core.email.view | in-api |
 | SCR-CORE-LEGAL | Legal pages and business details | /admin/legal | core.legal.edit | planned |
 | SCR-CORE-COOKIES | Cookie consent settings and log | /admin/cookies | core.legal.edit | planned |
-| SCR-CORE-CACHE | Cache purge | /admin/cache | core.cache.manage | planned |
+| SCR-CORE-CACHE | Cache purge | /admin/cache | core.cache.manage | in-api |
 | SCR-CORE-MODULES | Module toggles | /admin/modules | core.modules.manage | in-api |
 | SCR-CORE-AUDIT | Audit log | /admin/logs/audit | core.logs.view | planned |
 | SCR-CORE-ERRORS | Error and request logs | /admin/logs/errors | core.logs.view | planned |
@@ -315,3 +315,4 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.4 Auth API: signup, login, lockout, 2FA, password resets (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.5 RBAC: roles list, permission matrix update, staff invite, requirePermission/requireRole guards (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.6 Email engine: SMTP AES-256 encrypted settings, test send, 14 automation triggers, templates, queue with retry backoff, marketing unsubscribe (in-api) |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.7 Cache layer: memory and file drivers, tag-based invalidation, admin cache status and purge endpoints (in-api) |

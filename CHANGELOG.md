@@ -51,3 +51,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Token-based unsubscribe flow (`/api/v1/email/unsubscribe`) and consent verification for marketing emails; transactional emails bypass marketing restrictions.
   - Email templates library (`/api/v1/admin/email/templates`) with versioned editing and reset to system default.
   - Paginated email logs (`/api/v1/admin/email/log`) and manual resend capability.
+- Multi-Driver Cache Layer & Tag Invalidation (CP2.7):
+  - Pluggable `CacheDriver` architecture with in-memory (`MemoryCacheDriver`) and persistent filesystem (`FileCacheDriver`) drivers for shared web hosting without Redis.
+  - Standardized tag invalidation (`settings`, `menus`, `pages`, `theme`, `catalog`, `navigation`) with reverse tag indexing.
+  - Unified `CacheManager` with `getOrSet`, atomic purge, and TTL lifecycle management.
+  - Admin cache management endpoints under `/api/v1/admin/cache`:
+    - `GET /api/v1/admin/cache`: Inspects active driver, total cached items, and registered tags.
+    - `POST /api/v1/admin/cache/purge`: Supports selective tag invalidation, single key purging, and complete cache flush.
+  - Route guard `requirePermission('core.cache.manage')` enforcing administrative authorization.
