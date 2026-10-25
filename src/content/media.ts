@@ -125,6 +125,14 @@ export class MediaService {
     altText?: string;
     publicUrl: string;
   }): Promise<MediaItem> {
+    const rules = this.getUploadRules();
+    if (!rules.allowedMimeTypes.includes(item.mimeType.toLowerCase())) {
+      throw new Error(`MIME type '${item.mimeType}' is not allowed. Allowed types: ${rules.allowedMimeTypes.join(', ')}`);
+    }
+    if (item.sizeBytes > rules.maxSizeBytes) {
+      throw new Error(`File size ${item.sizeBytes} bytes exceeds maximum allowed limit of ${rules.maxSizeBytes} bytes`);
+    }
+
     const created: MediaItem = {
       id: mediaIdCounter++,
       filename: item.filename,

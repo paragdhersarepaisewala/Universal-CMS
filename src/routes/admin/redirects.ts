@@ -88,19 +88,27 @@ export const adminRedirectsRoutes: FastifyPluginAsync = async (app: FastifyInsta
     },
     async (req, reply) => {
       const body = req.body as { sourcePath: string; targetPath: string; statusCode?: number; isActive?: boolean };
-      const created = await RedirectService.createRedirect(body);
+      try {
+        const created = await RedirectService.createRedirect(body);
 
-      await AuditService.log({
-        userId: req.user?.id,
-        action: 'redirect.created',
-        entityType: 'redirect',
-        entityId: String(created.id),
-        afterValues: created,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-      });
+        await AuditService.log({
+          userId: req.user?.id,
+          action: 'redirect.created',
+          entityType: 'redirect',
+          entityId: String(created.id),
+          afterValues: created,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        });
 
-      return reply.send({ data: created });
+        return reply.send({ data: created });
+      } catch (err: unknown) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: err instanceof Error ? err.message : 'Failed to create redirect',
+        });
+      }
     }
   );
 

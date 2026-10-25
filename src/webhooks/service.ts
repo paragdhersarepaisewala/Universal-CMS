@@ -53,6 +53,14 @@ export class WebhookService {
   }
 
   static async listWebhooks(): Promise<WebhookSubscription[]> {
+    try {
+      const rows = await db.select().from(settings).where(eq(settings.group, 'webhooks'));
+      if (rows.length > 0) {
+        return rows.map(r => (typeof r.value === 'string' ? JSON.parse(r.value) : r.value) as WebhookSubscription);
+      }
+    } catch {
+      // Fallback
+    }
     return inMemoryWebhooks;
   }
 
@@ -75,7 +83,17 @@ export class WebhookService {
     dispatchedCount: number;
     subscribers: string[];
   }> {
-    const subs = inMemoryWebhooks.filter(w => w.isActive && (w.events.includes(event) || w.events.includes('*')));
+    let allSubs = inMemoryWebhooks;
+    try {
+      const rows = await db.select().from(settings).where(eq(settings.group, 'webhooks'));
+      if (rows.length > 0) {
+        allSubs = rows.map(r => (typeof r.value === 'string' ? JSON.parse(r.value) : r.value) as WebhookSubscription);
+      }
+    } catch {
+      // Fallback
+    }
+
+    const subs = allSubs.filter(w => w.isActive && (w.events.includes(event) || w.events.includes('*')));
     const subscribers: string[] = [];
 
     const payloadString = JSON.stringify({

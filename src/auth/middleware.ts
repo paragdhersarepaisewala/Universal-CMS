@@ -36,6 +36,31 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     });
   }
 
+  if (token.startsWith('cms_live_')) {
+    const { ApiTokenService } = await import('../api-tokens/service.js');
+    const apiToken = await ApiTokenService.validateToken(token);
+    if (!apiToken) {
+      return reply.status(401).send({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'API token is invalid or has expired.',
+        },
+      });
+    }
+
+    request.user = {
+      id: apiToken.userId,
+      name: `API Token (${apiToken.name})`,
+      email: 'api-token@system.local',
+      roleId: 2,
+      roleName: 'admin',
+      isActive: true,
+      emailVerifiedAt: new Date().toISOString(),
+      twoFactorEnabled: false,
+    };
+    return;
+  }
+
   const user = await authService.validateSession(token);
   if (!user) {
     return reply.status(401).send({

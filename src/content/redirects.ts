@@ -127,10 +127,16 @@ export class RedirectService {
     statusCode?: number;
     isActive?: boolean;
   }): Promise<RedirectItem> {
+    const source = data.sourcePath.startsWith('/') ? data.sourcePath : `/${data.sourcePath}`;
+    const target = data.targetPath;
+    if (source.toLowerCase() === target.toLowerCase()) {
+      throw new Error('Self-referential redirect detected: source path and target path cannot be identical.');
+    }
+
     const created: RedirectItem = {
       id: redirectIdCounter++,
-      sourcePath: data.sourcePath.startsWith('/') ? data.sourcePath : `/${data.sourcePath}`,
-      targetPath: data.targetPath,
+      sourcePath: source,
+      targetPath: target,
       statusCode: data.statusCode || 301,
       isActive: data.isActive !== undefined ? data.isActive : true,
       hitCount: 0,

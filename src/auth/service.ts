@@ -96,22 +96,37 @@ export class AuthService {
 
   // 2. Email verification
   public async verifyEmail(tokenOrCode: string, email?: string): Promise<{ verified: boolean; userId: number }> {
+    const isNumericCode = /^\d{6}$/.test(tokenOrCode.trim());
+    if (isNumericCode && !email) {
+      throw new AuthError('Email address is required when verifying with a numeric 6-digit code.', 'VALIDATION_FAILED', 422);
+    }
+
     const connection = await pool.getConnection();
     try {
-      const hashed = hashToken(tokenOrCode);
+      let query: string;
+      const params: unknown[] = [];
 
-      // Search by token hash or by (code + email)
-      let query = `
-        SELECT t.id, t.user_id, t.expires_at, u.email
-        FROM auth_tokens t
-        JOIN users u ON u.id = t.user_id
-        WHERE t.token_type = 'email_verify' AND (t.token_hash = ? OR t.code = ?)
-      `;
-      const params: unknown[] = [hashed, tokenOrCode];
-
-      if (email) {
-        query += ' AND u.email = ?';
-        params.push(email.toLowerCase());
+      if (isNumericCode) {
+        query = `
+          SELECT t.id, t.user_id, t.expires_at, u.email
+          FROM auth_tokens t
+          JOIN users u ON u.id = t.user_id
+          WHERE t.token_type = 'email_verify' AND t.code = ? AND u.email = ?
+        `;
+        params.push(tokenOrCode.trim(), email!.toLowerCase());
+      } else {
+        const hashed = hashToken(tokenOrCode.trim());
+        query = `
+          SELECT t.id, t.user_id, t.expires_at, u.email
+          FROM auth_tokens t
+          JOIN users u ON u.id = t.user_id
+          WHERE t.token_type = 'email_verify' AND t.token_hash = ?
+        `;
+        params.push(hashed);
+        if (email) {
+          query += ' AND u.email = ?';
+          params.push(email.toLowerCase());
+        }
       }
 
       const [rows] = await connection.query<RowDataPacket[]>(query, params);

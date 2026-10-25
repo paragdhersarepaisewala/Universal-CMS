@@ -4,13 +4,13 @@ Date: 2026-10-25
 Test Framework: Vitest 2.1.9
 Runtime: Node.js 22 LTS
 Target: cms-core Headless API Engine
-Status: PASS (119 passed, 0 failed)
+Status: PASS (126 passed, 0 failed)
 
 ## Summary
 
-- Total Test Suites: 17
-- Total Tests: 119
-- Passed: 119
+- Total Test Suites: 18
+- Total Tests: 126
+- Passed: 126
 - Failed: 0
 - Skipped: 0
 - Code Coverage Target: Met (>90% on core business logic, schema, rbac, and auth)
@@ -119,3 +119,12 @@ Status: PASS (119 passed, 0 failed)
     - Rate limiting and failed attempt lockout
     - TOTP two-factor authentication (2FA) verification for admin roles
     - Secure session revocation and logout
+
+18. tests/security-audit.test.ts (7 passed)
+    - Defense against client-side price tampering (CWE-472)
+    - Stock quantity and inventory limit enforcement
+    - Numeric 6-digit verification code user binding
+    - File upload MIME type and maximum size constraints (CWE-434)
+    - Prevention of self-referential redirect loops (CWE-601)
+    - Scoped Bearer API token authorization (cms_live_)
+

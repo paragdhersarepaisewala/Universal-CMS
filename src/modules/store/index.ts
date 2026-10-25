@@ -243,6 +243,13 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
 
       const order = await StoreService.markOrderPaid(body.orderNumber, body.razorpayPaymentId);
+      if (!order) {
+        return reply.status(404).send({
+          statusCode: 404,
+          error: 'Not Found',
+          message: `Order '${body.orderNumber}' not found`,
+        });
+      }
       return reply.send({ data: { success: true, order } });
     }
   );

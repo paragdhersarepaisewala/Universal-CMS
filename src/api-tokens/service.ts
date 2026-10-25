@@ -94,8 +94,17 @@ export class ApiTokenService {
   }
 
   static async listTokens(userId?: number): Promise<Omit<ApiTokenRecord, 'tokenHash'>[]> {
-    const list = userId ? inMemoryApiTokens.filter(t => t.userId === userId) : inMemoryApiTokens;
-    return list.map(({ tokenHash: _th, ...rest }) => rest);
+    let list = inMemoryApiTokens;
+    try {
+      const rows = await db.select().from(settings).where(eq(settings.group, 'api_tokens'));
+      if (rows.length > 0) {
+        list = rows.map(r => (typeof r.value === 'string' ? JSON.parse(r.value) : r.value) as ApiTokenRecord);
+      }
+    } catch {
+      // Fallback
+    }
+    const filtered = userId ? list.filter(t => t.userId === userId) : list;
+    return filtered.map(({ tokenHash: _th, ...rest }) => rest);
   }
 
   static async revokeToken(tokenId: string): Promise<boolean> {

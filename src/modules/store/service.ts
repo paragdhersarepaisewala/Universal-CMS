@@ -205,6 +205,23 @@ export class StoreService {
     return inMemoryProducts.find(p => p.slug === slug) || null;
   }
 
+  static async getProductById(id: number): Promise<ProductRecord | null> {
+    try {
+      const rows = await db.select().from(products).where(eq(products.id, id));
+      if (rows[0]) {
+        return {
+          ...rows[0],
+          status: rows[0].status as ProductRecord['status'],
+          createdAt: rows[0].createdAt.toISOString(),
+          updatedAt: rows[0].updatedAt.toISOString(),
+        };
+      }
+    } catch {
+      // Fallback
+    }
+    return inMemoryProducts.find(p => p.id === id) || null;
+  }
+
   static async createProduct(data: {
     name: string;
     slug: string;
@@ -364,9 +381,25 @@ export class StoreService {
       throw new Error('Order items cannot be empty');
     }
 
+    const verifiedItems: OrderItemInput[] = [];
+    for (const item of data.items) {
+      const product = await this.getProductById(item.productId);
+      if (!product || product.status !== 'active') {
+        throw new Error(`Product with ID ${item.productId} is unavailable`);
+      }
+      if (product.trackInventory && product.stockQuantity < item.quantity) {
+        throw new Error(`Insufficient stock for product '${product.name}' (available: ${product.stockQuantity})`);
+      }
+      verifiedItems.push({
+        ...item,
+        price: product.price, // Server enforces authoritative catalog price!
+        title: product.name,
+      });
+    }
+
     let couponDiscount = 0;
     if (data.couponCode) {
-      const subtotalCheck = data.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      const subtotalCheck = verifiedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
       const validation = await this.validateCoupon(data.couponCode, subtotalCheck);
       if (validation.valid) {
         couponDiscount = validation.discountAmount;
@@ -374,7 +407,7 @@ export class StoreService {
     }
 
     const { subtotal, discountTotal, taxTotal, shippingTotal, total } = this.calculateTotals({
-      items: data.items,
+      items: verifiedItems,
       couponDiscount,
     });
 
@@ -399,8 +432,33 @@ export class StoreService {
       version: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      items: data.items,
+      items: verifiedItems,
     };
+
+    // Deduct inventory
+    for (const item of verifiedItems) {
+      const product = inMemoryProducts.find(p => p.id === item.productId);
+      if (product && product.trackInventory) {
+        product.stockQuantity = Math.max(0, product.stockQuantity - item.quantity);
+        if (product.stockQuantity <= product.lowStockThreshold) {
+          try {
+            await db.insert(jobs).values({
+              queue: 'email',
+              jobType: 'admin_low_stock',
+              payload: JSON.stringify({
+                productId: product.id,
+                productName: product.name,
+                remainingStock: product.stockQuantity,
+                threshold: product.lowStockThreshold,
+              }),
+              status: 'pending',
+            });
+          } catch {
+            // Fallback
+          }
+        }
+      }
+    }
 
     try {
       const [res] = await db.insert(orders).values({

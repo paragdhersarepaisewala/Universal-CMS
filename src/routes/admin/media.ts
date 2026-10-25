@@ -135,18 +135,26 @@ export const adminMediaRoutes: FastifyPluginAsync = async (app: FastifyInstance)
         publicUrl: string;
       };
 
-      const created = await MediaService.registerMedia(body);
-      await AuditService.log({
-        userId: req.user?.id,
-        action: 'media.uploaded',
-        entityType: 'media',
-        entityId: String(created.id),
-        afterValues: created,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-      });
+      try {
+        const created = await MediaService.registerMedia(body);
+        await AuditService.log({
+          userId: req.user?.id,
+          action: 'media.uploaded',
+          entityType: 'media',
+          entityId: String(created.id),
+          afterValues: created,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        });
 
-      return reply.send({ data: created });
+        return reply.send({ data: created });
+      } catch (err: unknown) {
+        return reply.status(422).send({
+          statusCode: 422,
+          error: 'Unprocessable Entity',
+          message: err instanceof Error ? err.message : 'Media validation failed',
+        });
+      }
     }
   );
 
