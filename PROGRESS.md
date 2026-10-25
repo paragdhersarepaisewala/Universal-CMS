@@ -105,15 +105,15 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 ### Email and SMTP
 - [~] SMTP settings screen (host, port, security, username, password stored encrypted, from name, from address, reply-to) - belongs to client repo
 - [~] Connection test and test-send button with clear error messages - belongs to client repo
-- [ ] Email queue with retry, backoff and failure log
+- [x] Email queue with retry, backoff and failure log
 - [~] Email log in admin: recipient, event, status, time, resend - belongs to client repo
 - [~] Email studio: visual theme-based template editor with desktop and mobile preview - belongs to client repo
 - [~] Editable blocks: logo, header, heading, text, image, button, product list, order table, footer, social links - belongs to client repo
 - [~] Variable picker (customer name, order number, items, totals, address, receipt link, reset link, etc.) - belongs to client repo
 - [~] Send-test-to-myself, version history, reset to theme default - belongs to client repo
 - [~] Raw HTML and CSS mode restricted to the owner role (optional advanced mode) - belongs to client repo
-- [ ] Automatic emails each with an on and off switch and editable subject: welcome, verify email, password reset, order placed, payment received, shipped, delivered, cancelled, refund, invoice, abandoned cart, donation receipt, admin new order, admin low stock
-- [ ] Marketing emails include unsubscribe; transactional emails do not depend on marketing consent
+- [x] Automatic emails each with an on and off switch and editable subject: welcome, verify email, password reset, order placed, payment received, shipped, delivered, cancelled, refund, invoice, abandoned cart, donation receipt, admin new order, admin low stock
+- [x] Marketing emails include unsubscribe; transactional emails do not depend on marketing consent
 - [~] Email layouts tested in common clients with inline CSS and table layout - belongs to client repo
 - [~] SPF, DKIM and DMARC setup steps documented for the client's domain - belongs to client repo
 

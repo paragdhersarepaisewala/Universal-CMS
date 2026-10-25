@@ -119,11 +119,11 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 | SCR-CORE-USERS | Users list and edit | /admin/users | core.users.view | planned |
 | SCR-CORE-ROLES | Roles and permission matrix | /admin/roles | core.roles.view | in-api |
 | SCR-CORE-SETTINGS | Site settings | /admin/settings | core.settings.view | planned |
-| SCR-CORE-SMTP | SMTP setup and test send | /admin/email/smtp | core.email.settings | planned |
-| SCR-CORE-EMAIL-TPL | Email template library | /admin/email/templates | core.email.view | planned |
-| SCR-CORE-EMAIL-EDIT | Email template editor | /admin/email/templates/:id | core.email.edit | planned |
-| SCR-CORE-EMAIL-AUTO | Automatic email switches | /admin/email/automation | core.email.edit | planned |
-| SCR-CORE-EMAIL-LOG | Email log | /admin/email/log | core.email.view | planned |
+| SCR-CORE-SMTP | SMTP setup and test send | /admin/email/smtp | core.email.settings | in-api |
+| SCR-CORE-EMAIL-TPL | Email template library | /admin/email/templates | core.email.view | in-api |
+| SCR-CORE-EMAIL-EDIT | Email template editor | /admin/email/templates/:id | core.email.edit | in-api |
+| SCR-CORE-EMAIL-AUTO | Automatic email switches | /admin/email/automation | core.email.edit | in-api |
+| SCR-CORE-EMAIL-LOG | Email log | /admin/email/log | core.email.view | in-api |
 | SCR-CORE-LEGAL | Legal pages and business details | /admin/legal | core.legal.edit | planned |
 | SCR-CORE-COOKIES | Cookie consent settings and log | /admin/cookies | core.legal.edit | planned |
 | SCR-CORE-CACHE | Cache purge | /admin/cache | core.cache.manage | planned |
@@ -314,3 +314,4 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.3 Module toggles API and navigation endpoint (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.4 Auth API: signup, login, lockout, 2FA, password resets (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.5 RBAC: roles list, permission matrix update, staff invite, requirePermission/requireRole guards (in-api) |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.6 Email engine: SMTP AES-256 encrypted settings, test send, 14 automation triggers, templates, queue with retry backoff, marketing unsubscribe (in-api) |

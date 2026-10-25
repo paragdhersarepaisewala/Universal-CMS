@@ -41,3 +41,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Fastify route guards: `requirePermission` and `requireRole` returning 403 FORBIDDEN when unauthorized.
   - Admin RBAC endpoints: `GET /api/v1/admin/me`, `GET /api/v1/admin/roles`, `GET /api/v1/admin/permissions`, `PUT /api/v1/admin/roles/:id/permissions`, and `POST /api/v1/admin/users/invite`.
   - Comprehensive contract test suite proving authorization enforcement, permission updates, and 403 status codes.
+- Email Engine & Background Queue (CP2.6):
+  - SMTP configuration stored encrypted at rest using AES-256-GCM (`src/utils/encryption.ts`).
+  - Passwords write-only with optimistic concurrency versioning; `GET /api/v1/admin/email/smtp` masks passwords (`password_set: boolean`).
+  - Connection test endpoint (`POST /api/v1/admin/email/smtp/test`) and test-send endpoint (`POST /api/v1/admin/email/test-send`).
+  - Background email queue runner (`src/scripts/process-jobs.ts` and `POST /api/v1/admin/email/queue/process`) with exponential backoff retry and failure logging, compatible with Hostinger hPanel cron.
+  - Responsive table-based HTML layout wrapper with theme styling tokens and variable interpolation (`{{ dot.notation }}`).
+  - Registry of 14 automatic email events across transactional and marketing categories with customizable subjects and on/off switches.
+  - Token-based unsubscribe flow (`/api/v1/email/unsubscribe`) and consent verification for marketing emails; transactional emails bypass marketing restrictions.
+  - Email templates library (`/api/v1/admin/email/templates`) with versioned editing and reset to system default.
+  - Paginated email logs (`/api/v1/admin/email/log`) and manual resend capability.

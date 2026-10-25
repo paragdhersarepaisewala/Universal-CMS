@@ -99,6 +99,34 @@ export async function runSeed(): Promise<void> {
     } else {
       console.log(`[Seed] Owner account already exists: ${userRows[0].email}`);
     }
+
+    // Seed default email templates
+    console.log('[Seed] Seeding default email templates...');
+    const { EMAIL_EVENTS } = await import('../email/events.js');
+    const { DEFAULT_TEMPLATES } = await import('../email/templates.js');
+
+    for (const [key, def] of Object.entries(EMAIL_EVENTS)) {
+      const templateContent = DEFAULT_TEMPLATES[def.defaultTemplateKey] || {
+        subject: def.defaultSubject,
+        bodyHtml: `<p>${def.name}</p>`,
+        bodyText: def.name,
+      };
+
+      await connection.query(
+        `INSERT INTO email_templates (\`key\`, name, subject, body_html, body_text, variables_schema, is_active, is_system, version)
+         VALUES (?, ?, ?, ?, ?, ?, TRUE, TRUE, 1)
+         ON DUPLICATE KEY UPDATE name = VALUES(name)`,
+        [
+          key,
+          def.name,
+          templateContent.subject,
+          templateContent.bodyHtml,
+          templateContent.bodyText,
+          JSON.stringify(def.variables),
+        ]
+      );
+    }
+    console.log('[Seed] Email templates seeded.');
   } finally {
     connection.release();
   }
