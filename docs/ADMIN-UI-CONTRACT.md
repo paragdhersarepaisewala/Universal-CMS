@@ -3,8 +3,8 @@
 Location: `cms-core/docs/ADMIN-UI-CONTRACT.md`
 
 ```
-Contract version:   0.1.0
-cms-core version:   0.1.0
+Contract version:   0.2.0
+cms-core version:   0.2.0
 Last updated:       2026-10-25
 ```
 
@@ -328,12 +328,69 @@ Fields:
   Trigger Events  | events   | multiselect | yes | page.published, user.registered, order.created, or * (wildcard)
   Custom Secret   | secret   | text     | no  | Optional custom signing secret; auto-generated if omitted
 
-Actions
-  Register        | POST /api/v1/admin/webhooks | core.settings.edit | toast, add to list | audit webhooks.registered | none | none
-  Test dispatch   | POST /api/v1/admin/webhooks/test { event, payload } | core.settings.edit | sends test event, returns dispatched count | audit webhooks.tested | none | none
-  Delete webhook  | DELETE /api/v1/admin/webhooks/:id | core.settings.edit | confirm dialog, remove from list | audit webhooks.deleted | none | none
+### 5.16 Store: Products Catalog & Inventory (`STORE-01`)
+```
+Screen id:          STORE-01
+Route in GUI:       /admin/store/products
+Module:             store
+Permissions:        view = store.products.view, actions = store.products.edit
 
-Contract tests:     HMAC-SHA256 signature verification; wildcard * match; unauthorized returns 401; editor returns 403.
+Data loaded
+  Endpoint:         GET /api/v1/admin/store/products
+  Query params:     q, status, page, perPage
+  Response fields:  id, name, slug, price, compareAtPrice, productType, stockQuantity, status
+
+Fields (Create / Edit):
+  Product Name      | name              | text     | yes | Product title
+  Slug              | slug              | text     | yes | Unique URL slug
+  Product Type      | productType       | select   | yes | physical or digital (digital requires digital-delivery module)
+  Price (Paise)     | price             | number   | yes | Price in integer paise
+  Compare Price     | compareAtPrice    | number   | no  | Original strike-through price
+  SKU               | sku               | text     | no  | Inventory stock keeping unit
+  Stock Quantity    | stockQuantity     | number   | no  | Available units (disabled if trackStock is false)
+  Track Stock       | trackStock        | boolean  | no  | Track inventory (default true for physical, false for digital)
+  Allow Backorder   | allowBackorder    | boolean  | no  | Allow checkout when stock reaches 0
+  Status            | status            | select   | yes | draft, active, archived
+
+Actions
+  Create Product    | POST /api/v1/admin/store/products | store.products.edit | toast, add to list | audit store.product.created
+  Update Product    | PUT /api/v1/admin/store/products/:id | store.products.edit | toast, update list | audit store.product.updated
+```
+
+### 5.17 Store: Orders & State Transitions (`STORE-02`)
+```
+Screen id:          STORE-02
+Route in GUI:       /admin/store/orders
+Module:             store
+Permissions:        view = store.orders.view, actions = store.orders.edit
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/store/orders
+  Query params:     status, page, perPage
+  Response fields:  id, orderNumber, customerEmail, status, total, paymentMethod, paymentStatus, createdAt
+
+Actions
+  View Order        | GET /api/v1/admin/store/orders/:id | store.orders.view | opens detail drawer/page
+  Transition Status | POST /api/v1/admin/store/orders/:id/transition { status, reason } | store.orders.edit | toast, refreshes timeline | audit store.order.transitioned
+  Add Note          | POST /api/v1/admin/store/orders/:id/notes { note, isCustomerVisible } | store.orders.edit | appends note | audit store.order.note_added
+```
+
+### 5.18 Store: Order Refunds (`STORE-03`)
+```
+Screen id:          STORE-03
+Route in GUI:       /admin/store/orders/:id/refund
+Module:             store
+Permissions:        actions = store.orders.refund
+
+Fields:
+  Refund Amount     | amountPaise       | number   | no  | Manual refund amount or derived from lines
+  Line Items        | lineItems         | array    | no  | orderItemId, quantity
+  Reason            | reason            | text     | yes | Explanation for refund
+  Idempotency Key   | idempotencyKey    | text     | yes | Unique client-generated key
+  Restock Inventory | restock           | boolean  | no  | Restock physical quantities into inventory
+
+Actions
+  Issue Refund      | POST /api/v1/admin/store/orders/:id/refund | store.orders.refund | confirms with gateway, records refund | audit store.order.refunded
 ```
 
 ## 6. Completion checklist for cms-core agents
@@ -366,4 +423,5 @@ Contract tests:     HMAC-SHA256 signature verification; wildcard * match; unauth
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.7 Cache layer: memory and file drivers, tag-based invalidation, admin cache status and purge endpoints (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.8 Content, theme, and compliance API: pages, blocks, menus, media, SEO, redirects, India legal drafts, consent logs, site settings, and audit logging (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.9 API Contract: API Tokens, outbound Webhooks HMAC signing, API.md reference, and Gate 2 sign-off (in-api) |
+| 0.2.0 | 0.2.0 | 2026-10-25 | H2.1 Store Engine: atomic stock reservation, payments, Razorpay webhooks, state machine, order notes, refunds, digital/physical handlers (in-api) |
 

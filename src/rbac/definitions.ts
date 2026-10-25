@@ -69,6 +69,8 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'store.products.view', module: 'store', description: 'View ecommerce products' },
   { key: 'store.products.edit', module: 'store', description: 'Create and edit products' },
   { key: 'store.orders.view', module: 'store', description: 'View orders and fulfillments' },
+  { key: 'store.orders.edit', module: 'store', description: 'Update order status transitions and notes' },
+  { key: 'store.orders.refund', module: 'store', description: 'Issue full and partial refunds for orders' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -112,6 +114,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'store.products.view',
     'store.products.edit',
     'store.orders.view',
+    'store.orders.edit',
+    'store.orders.refund',
   ],
 
   manager: [

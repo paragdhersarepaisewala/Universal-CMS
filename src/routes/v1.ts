@@ -21,6 +21,7 @@ import { adminWebhooksRoutes } from './admin/webhooks.js';
 import { adminFormsRoutes } from './admin/forms.js';
 import { adminBannersRoutes } from './admin/banners.js';
 import { publicAdSlotsRoutes, adminAdSlotsRoutes } from './admin/ad-slots.js';
+import { jobsRoutes } from './jobs.js';
 import { blogModuleManifest } from '../modules/blog/index.js';
 import { storeModuleManifest } from '../modules/store/index.js';
 
@@ -33,6 +34,9 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
 
   // Public email endpoints (unsubscribe)
   await fastify.register(publicEmailRoutes, { prefix: '/email' });
+
+  // Background jobs runner (cron trigger)
+  await fastify.register(jobsRoutes, { prefix: '/jobs' });
 
   // Public content endpoints (theme, pages, menus, sitemap, robots, redirects, cookie consent, forms, banners)
   await fastify.register(publicContentRoutes);

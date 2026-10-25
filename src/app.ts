@@ -42,6 +42,18 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     timeWindow: '1 minute',
   });
 
+  // Raw body capture for webhook signature verification
+  app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
+    try {
+      const str = body.toString('utf8');
+      (req as any).rawBody = str;
+      const json = str ? JSON.parse(str) : {};
+      done(null, json);
+    } catch (err: any) {
+      done(err, undefined);
+    }
+  });
+
   // Configure OpenAPI Swagger specification generator
   app.register(swagger, {
     openapi: {

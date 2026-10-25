@@ -82,8 +82,8 @@ Status Legend:
 - [ ] Inventory stock history and bulk import/export (quantity and low-stock threshold implemented; history table and bulk CSV import/export pending)
 - [x] Cart, guest and logged-in checkout (POST /api/v1/store/cart/quote, POST /api/v1/store/checkout, tested in tests/store.test.ts)
 - [x] Coupons and discount rules (StoreService coupon validation, percentage, fixed, min order, tested in tests/store.test.ts)
-- [ ] Orders: partial fulfilment, return requests, and refund processing (basic status flow and notes implemented; returns, refunds, and partial fulfilment pending)
-- [ ] Razorpay webhooks with idempotency and event handling (signature verification done, webhook route and idempotency pending)
+- [x] Orders: full/partial refunds with line items & restock, state machine transitions, notes, and order_status_history (StoreService, POST /orders/:id/refunds, POST /orders/:id/transition, tested in tests/store-h2-1.test.ts)
+- [x] Razorpay webhooks with idempotency and event handling (HMAC-SHA256 signature verification, payment_webhook_events deduplication, monotonic state transitions, tested in tests/store-h2-1.test.ts)
 - [ ] Cash on delivery rules: pincode serviceability, max order value, and COD fee calculation (COD payment method accepted; rule engine pending)
 - [ ] Multiple shipping partners adapter interface, rate and serviceability checks, AWB and tracking updates (cms-core)
 - [~] Shipping partner frontend integration and customer tracking view - belongs to client repo
@@ -295,7 +295,7 @@ Performance 90 or higher, Accessibility 95 or higher, Best Practices 95 or highe
 - [ ] Local run instructions validated from an automated clean clone test (documented in README; clean clone CI run pending)
 - [~] Hostinger staging deployment completed - belongs to client repo
 - [x] Environment variables documented (Documented in .env.example and README.md)
-- [ ] Execution route /api/v1/jobs/process for cron trigger (cron documented in README and docs/BACKUP.md; HTTP process endpoint implementation pending)
+- [x] Execution route /api/v1/jobs/process for cron trigger (Central runner processing email queue and unpaid order expiry with module guards, tested in tests/store-h2-1.test.ts)
 - [x] Backup and restore tested (src/scripts/backup.ts, src/scripts/restore.ts, docs/BACKUP.md, tested in tests/backup.test.ts)
 - [~] SSL, DNS, redirects www to non-www (or reverse) confirmed - belongs to client repo
 - [~] Admin user guide and role guide written - belongs to client repo

@@ -353,9 +353,12 @@ export const products = mysqlTable('products', {
   price: int('price').notNull(), // Smallest currency unit (paisa / cents)
   compareAtPrice: int('compare_at_price'),
   costPrice: int('cost_price'),
+  productType: varchar('product_type', { length: 50 }).default('physical').notNull(), // physical, digital
   stockQuantity: int('stock_quantity').default(0).notNull(),
   lowStockThreshold: int('low_stock_threshold').default(5).notNull(),
   trackInventory: boolean('track_inventory').default(true).notNull(),
+  trackStock: boolean('track_stock').default(true).notNull(),
+  allowBackorder: boolean('allow_backorder').default(false).notNull(),
   status: varchar('status', { length: 20 }).default('draft').notNull(), // draft, active, archived
   isAgeRestricted: boolean('is_age_restricted').default(false).notNull(),
   featuredImageId: bigint('featured_image_id', { mode: 'number', unsigned: true }),
@@ -367,6 +370,7 @@ export const products = mysqlTable('products', {
 export const productVariants = mysqlTable('product_variants', {
   id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
   productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  productType: varchar('product_type', { length: 50 }).default('physical').notNull(),
   title: varchar('title', { length: 150 }).notNull(),
   sku: varchar('sku', { length: 100 }),
   price: int('price').notNull(),
@@ -380,9 +384,10 @@ export const orders = mysqlTable('orders', {
   orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
   customerId: bigint('customer_id', { mode: 'number', unsigned: true }),
   customerEmail: varchar('customer_email', { length: 255 }).notNull(),
-  status: varchar('status', { length: 30 }).default('pending').notNull(), // pending, processing, shipped, delivered, cancelled, refunded
+  status: varchar('status', { length: 35 }).default('pending_payment').notNull(),
+  orderKind: varchar('order_kind', { length: 30 }).default('physical').notNull(), // physical, digital, mixed
   paymentMethod: varchar('payment_method', { length: 50 }).default('razorpay').notNull(), // razorpay, cod
-  paymentStatus: varchar('payment_status', { length: 30 }).default('pending').notNull(), // pending, captured, failed, refunded
+  paymentStatus: varchar('payment_status', { length: 30 }).default('pending').notNull(), // pending, authorized, captured, failed, refunded
   paymentId: varchar('payment_id', { length: 100 }),
   subtotal: int('subtotal').notNull(),
   taxTotal: int('tax_total').default(0).notNull(),
@@ -392,7 +397,12 @@ export const orders = mysqlTable('orders', {
   currency: varchar('currency', { length: 10 }).default('INR').notNull(),
   shippingAddress: json('shipping_address'),
   billingAddress: json('billing_address'),
+  billingState: varchar('billing_state', { length: 100 }),
   notes: text('notes'),
+  idempotencyKey: varchar('idempotency_key', { length: 255 }),
+  idempotencyPayloadHash: varchar('idempotency_payload_hash', { length: 64 }),
+  expiresAt: timestamp('expires_at'),
+  guestAccessToken: varchar('guest_access_token', { length: 255 }),
   version: int('version').default(1).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
@@ -403,6 +413,8 @@ export const orderItems = mysqlTable('order_items', {
   orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
   productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
   variantId: bigint('variant_id', { mode: 'number', unsigned: true }),
+  productType: varchar('product_type', { length: 50 }).default('physical').notNull(),
+  fulfilmentStatus: varchar('fulfilment_status', { length: 50 }).default('pending').notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   sku: varchar('sku', { length: 100 }),
   price: int('price').notNull(),
@@ -421,6 +433,78 @@ export const coupons = mysqlTable('coupons', {
   usageCount: int('usage_count').default(0).notNull(),
   expiresAt: timestamp('expires_at'),
   isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const payments = mysqlTable('payments', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  gateway: varchar('gateway', { length: 50 }).default('razorpay').notNull(),
+  gatewayOrderId: varchar('gateway_order_id', { length: 100 }).notNull(),
+  gatewayPaymentId: varchar('gateway_payment_id', { length: 100 }).notNull().unique(),
+  amountPaise: int('amount_paise').notNull(),
+  currency: varchar('currency', { length: 10 }).default('INR').notNull(),
+  status: varchar('status', { length: 50 }).notNull(), // pending, authorized, captured, failed, refunded
+  method: varchar('method', { length: 50 }),
+  capturedAt: timestamp('captured_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const refunds = mysqlTable('refunds', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  paymentId: bigint('payment_id', { mode: 'number', unsigned: true }).notNull(),
+  amountPaise: int('amount_paise').notNull(),
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // pending, processed, failed
+  gatewayRefundId: varchar('gateway_refund_id', { length: 100 }),
+  idempotencyKey: varchar('idempotency_key', { length: 255 }).notNull().unique(),
+  restock: boolean('restock').default(false).notNull(),
+  reason: text('reason').notNull(),
+  createdBy: bigint('created_by', { mode: 'number', unsigned: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const stockMovements = mysqlTable('stock_movements', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  variantId: bigint('variant_id', { mode: 'number', unsigned: true }),
+  quantity: int('quantity').notNull(), // negative for reservation/sale, positive for restock/release
+  changeType: varchar('change_type', { length: 50 }).notNull(), // reservation, release, sale, restock, adjustment
+  reason: text('reason'),
+  referenceId: varchar('100', { length: 100 }), // order number or refund id
+  actorId: bigint('actor_id', { mode: 'number', unsigned: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const orderStatusHistory = mysqlTable('order_status_history', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  fromStatus: varchar('from_status', { length: 50 }).notNull(),
+  toStatus: varchar('to_status', { length: 50 }).notNull(),
+  actor: varchar('actor', { length: 100 }).notNull(),
+  reason: text('reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const orderNotes = mysqlTable('order_notes', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  isCustomerVisible: boolean('is_customer_visible').default(false).notNull(),
+  note: text('note').notNull(),
+  createdBy: bigint('created_by', { mode: 'number', unsigned: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const paymentWebhookEvents = mysqlTable('payment_webhook_events', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  eventId: varchar('event_id', { length: 100 }).notNull().unique(),
+  gateway: varchar('gateway', { length: 50 }).default('razorpay').notNull(),
+  eventName: varchar('event_name', { length: 100 }).notNull(),
+  payload: json('payload').notNull(),
+  status: varchar('status', { length: 50 }).default('received').notNull(), // received, processed, failed, ignored
+  processedAt: timestamp('processed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

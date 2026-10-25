@@ -6,6 +6,8 @@ import { StoreService } from '../src/modules/store/service.js';
 import { ApiTokenService } from '../src/api-tokens/service.js';
 import * as authServiceModule from '../src/auth/service.js';
 
+import { pool } from '../src/db/pool.js';
+
 describe('Security Audit & Gap Analysis Verification', () => {
   let app: FastifyInstance;
 
@@ -23,6 +25,14 @@ describe('Security Audit & Gap Analysis Verification', () => {
   beforeAll(async () => {
     initializeModules();
     moduleRegistry.setModuleState('store', true);
+    
+    // Ensure product 1 exists for Price Tampering Defense test
+    await pool.query(
+      `INSERT INTO products (id, name, slug, price, stock_quantity, track_stock, status)
+       VALUES (1, 'Artisan Ceramic Mug', 'artisan-ceramic-mug', 79900, 50, 1, 'active')
+       ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), stock_quantity = 50, status = 'active'`
+    );
+
     app = buildApp();
     await app.ready();
   });

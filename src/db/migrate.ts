@@ -628,6 +628,141 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0004_features_expansion completed.');
+    }
+
+    // Check 0005_store_engine_h2_1
+    const [rows5] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0005_store_engine_h2_1']
+    );
+
+    if (rows5.length === 0) {
+      console.log('[Migration] Applying 0005_store_engine_h2_1...');
+
+      const ensureColumn = async (table: string, column: string, definition: string) => {
+        try {
+          await connection.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition};`);
+        } catch (err: any) {
+          if (err?.errno !== 1060 && !err?.message?.includes('Duplicate column')) {
+            throw err;
+          }
+        }
+      };
+
+      await ensureColumn('users', 'date_of_birth', 'VARCHAR(20) NULL');
+      await ensureColumn('products', 'product_type', "VARCHAR(50) NOT NULL DEFAULT 'physical'");
+      await ensureColumn('products', 'track_stock', "BOOLEAN NOT NULL DEFAULT TRUE");
+      await ensureColumn('products', 'allow_backorder', "BOOLEAN NOT NULL DEFAULT FALSE");
+
+      await ensureColumn('product_variants', 'product_type', "VARCHAR(50) NOT NULL DEFAULT 'physical'");
+
+      await ensureColumn('orders', 'order_kind', "VARCHAR(30) NOT NULL DEFAULT 'physical'");
+      await ensureColumn('orders', 'billing_state', "VARCHAR(100) NULL");
+      await ensureColumn('orders', 'idempotency_key', "VARCHAR(255) NULL");
+      await ensureColumn('orders', 'idempotency_payload_hash', "VARCHAR(64) NULL");
+      await ensureColumn('orders', 'expires_at', "TIMESTAMP NULL");
+      await ensureColumn('orders', 'guest_access_token', "VARCHAR(255) NULL");
+
+      await ensureColumn('order_items', 'product_type', "VARCHAR(50) NOT NULL DEFAULT 'physical'");
+      await ensureColumn('order_items', 'fulfilment_status', "VARCHAR(50) NOT NULL DEFAULT 'pending'");
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS payments (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          gateway VARCHAR(50) NOT NULL DEFAULT 'razorpay',
+          gateway_order_id VARCHAR(100) NOT NULL,
+          gateway_payment_id VARCHAR(100) NOT NULL UNIQUE,
+          amount_paise INT NOT NULL,
+          currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+          status VARCHAR(50) NOT NULL,
+          method VARCHAR(50) NULL,
+          captured_at TIMESTAMP NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_payments_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS refunds (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          payment_id BIGINT UNSIGNED NOT NULL,
+          amount_paise INT NOT NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'pending',
+          gateway_refund_id VARCHAR(100) NULL,
+          idempotency_key VARCHAR(255) NOT NULL UNIQUE,
+          restock BOOLEAN NOT NULL DEFAULT FALSE,
+          reason TEXT NOT NULL,
+          created_by BIGINT UNSIGNED NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_refunds_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS stock_movements (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          product_id BIGINT UNSIGNED NOT NULL,
+          variant_id BIGINT UNSIGNED NULL,
+          quantity INT NOT NULL,
+          change_type VARCHAR(50) NOT NULL,
+          reason TEXT NULL,
+          reference_id VARCHAR(100) NULL,
+          actor_id BIGINT UNSIGNED NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_stock_prod (product_id),
+          INDEX idx_stock_ref (reference_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS order_status_history (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          from_status VARCHAR(50) NOT NULL,
+          to_status VARCHAR(50) NOT NULL,
+          actor VARCHAR(100) NOT NULL,
+          reason TEXT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_osh_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS order_notes (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          is_customer_visible BOOLEAN NOT NULL DEFAULT FALSE,
+          note TEXT NOT NULL,
+          created_by BIGINT UNSIGNED NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_notes_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS payment_webhook_events (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          event_id VARCHAR(100) NOT NULL UNIQUE,
+          gateway VARCHAR(50) NOT NULL DEFAULT 'razorpay',
+          event_name VARCHAR(100) NOT NULL,
+          payload JSON NOT NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'received',
+          processed_at TIMESTAMP NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_pwe_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0005_store_engine_h2_1']
+      );
+
+      console.log('[Migration] 0005_store_engine_h2_1 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }
