@@ -20,3 +20,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Complete core MySQL schema (19 tables): users, roles, permissions, role_permissions, sessions, audit_logs, settings, modules, theme_tokens, pages, content_blocks, menus, menu_items, media, redirects, seo_meta, email_templates, email_logs, jobs.
 - Added optimistic concurrency version columns to editable entities.
 - Migration runner updated with 0002_core_schema_cp2_2 executing all DDL definitions with foreign indexes and utf8mb4 collation.
+- Module system and feature flags: ModuleRegistry managing core (always-on) and optional modules with dependency graph validation.
+- Route guard hook (requireModule) enforcing 404 MODULE_DISABLED when disabled.
+- Dynamic admin navigation endpoint (/api/v1/admin/navigation) filtering items by enabled modules.
+- Admin module management endpoints: GET /api/v1/admin/modules and PATCH /api/v1/admin/modules/:name to toggle module states.
+- Unit and contract test suite proving disabled modules return 404, disappear from navigation, and core modules cannot be disabled.

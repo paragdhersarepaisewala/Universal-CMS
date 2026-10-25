@@ -127,7 +127,7 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 | SCR-CORE-LEGAL | Legal pages and business details | /admin/legal | core.legal.edit | planned |
 | SCR-CORE-COOKIES | Cookie consent settings and log | /admin/cookies | core.legal.edit | planned |
 | SCR-CORE-CACHE | Cache purge | /admin/cache | core.cache.manage | planned |
-| SCR-CORE-MODULES | Module toggles | /admin/modules | core.modules.manage | planned |
+| SCR-CORE-MODULES | Module toggles | /admin/modules | core.modules.manage | in-api |
 | SCR-CORE-AUDIT | Audit log | /admin/logs/audit | core.logs.view | planned |
 | SCR-CORE-ERRORS | Error and request logs | /admin/logs/errors | core.logs.view | planned |
 | SCR-CORE-BACKUP | Backups | /admin/backup | core.backup.manage | planned |
@@ -311,3 +311,4 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 | Contract version | cms-core version | Date | Change |
 |---|---|---|---|
 | 0.1.0 | 0.1.0 | 2026-10-25 | Initial skeleton and CP2.1 core setup |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.3 Module toggles API and navigation endpoint (in-api) |

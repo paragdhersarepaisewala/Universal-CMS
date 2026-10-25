@@ -3,8 +3,11 @@ import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { v1Routes } from './routes/v1.js';
+import { initializeModules } from './modules/index.js';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
+  initializeModules();
+
   const app = Fastify({
     logger: {
       level: process.env.NODE_ENV === 'test' ? 'silent' : 'info',

@@ -1,3 +1,5 @@
+import { FastifyPluginAsync } from 'fastify';
+
 export interface ModuleAdminNavEntry {
   id: string;
   label: string;
@@ -20,4 +22,14 @@ export interface ModuleManifest {
   adminNav: ModuleAdminNavEntry[];
   settingsSchema?: Record<string, unknown>;
   routesPrefix: string;
+  routes?: FastifyPluginAsync;
+}
+
+export interface ModuleStatus {
+  name: string;
+  version: string;
+  description: string;
+  isCore: boolean;
+  isEnabled: boolean;
+  dependsOn: string[];
 }

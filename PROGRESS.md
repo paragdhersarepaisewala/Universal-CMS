@@ -165,9 +165,9 @@ Templates are drafts for the client's lawyer to review. Do not claim compliance.
 
 ### Modules and cms-core repository
 - [x] cms-core in its own git repo with semantic versioning, CHANGELOG, README, tests
-- [ ] Module manifest for every feature (dependencies, permissions, settings, nav, migrations, routes, jobs)
-- [ ] Module toggle in config and in admin
-- [ ] Disabled module returns 404 on its routes, shows no admin navigation, runs no jobs, keeps its data
+- [x] Module manifest for every feature (dependencies, permissions, settings, nav, migrations, routes, jobs)
+- [x] Module toggle in config and in admin
+- [x] Disabled module returns 404 on its routes, shows no admin navigation, runs no jobs, keeps its data
 - [ ] Enabling a module runs its migrations safely
 - [ ] `openapi.json`, `docs/API.md`, `docs/ADMIN-UI-CONTRACT.md` current for the released version
 - [ ] Client project pins a cms-core version and never copies its code
@@ -215,7 +215,7 @@ Quality rules:
 - [ ] API tests for every endpoint, including a denied case for each protected role boundary
 - [~] Playwright end-to-end: signup with email verification, login, purchase or donation, admin edit reflected on site - belongs to client repo
 - [ ] Email tests: templates render with sample data, variables resolved, links valid, test-send works
-- [ ] Module toggle tests: disabled modules expose nothing
+- [x] Module toggle tests: disabled modules expose nothing
 - [~] Age gate and cookie consent tested including crawler behavior - belongs to client repo
 - [~] Playwright visual regression at 360, 768, 1280, 1920 px - belongs to client repo
 - [~] Playwright layout-shift check (CLS under 0.1 on every key page) - belongs to client repo
