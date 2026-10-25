@@ -55,8 +55,14 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
       docExpansion: 'list',
       deepLinking: false,
     },
-    staticCSP: true,
-    transformStaticCSP: (header) => header,
+    staticCSP: false,
+  });
+
+  // Ensure /api/v1/docs redirects to /api/v1/docs/ with trailing slash so relative static assets load properly
+  app.addHook('onRequest', async (req, reply) => {
+    if (req.url === '/api/v1/docs') {
+      return reply.redirect(301, '/api/v1/docs/');
+    }
   });
 
   // Export openapi.json route directly
