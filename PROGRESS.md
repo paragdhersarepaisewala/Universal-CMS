@@ -31,8 +31,8 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 ### Roles and permissions
 - [x] Roles: owner, admin, manager, editor, support, customer
 - [~] Permission matrix editable in admin - belongs to client repo
-- [ ] Server-side permission check on every admin route and endpoint
-- [ ] Invite staff by email with a role
+- [x] Server-side permission check on every admin route and endpoint
+- [x] Invite staff by email with a role
 - [ ] Audit log: who changed what, when, from which IP, with before and after values
 
 ### Content control (client edits everything)

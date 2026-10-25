@@ -30,6 +30,43 @@ export async function runSeed(): Promise<void> {
       );
     }
 
+    console.log('[Seed] Seeding system permissions and matrix...');
+    const { SYSTEM_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } = await import('../rbac/definitions.js');
+
+    for (const perm of SYSTEM_PERMISSIONS) {
+      await connection.query(
+        `INSERT INTO permissions (\`key\`, module, description)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE description = VALUES(description)`,
+        [perm.key, perm.module, perm.description]
+      );
+    }
+
+    // Seed role-permission relationships
+    const [allRoles] = await connection.query<RowDataPacket[]>('SELECT id, name FROM roles');
+    const [allPerms] = await connection.query<RowDataPacket[]>('SELECT id, `key` FROM permissions');
+
+    const permMap = new Map<string, number>();
+    for (const p of allPerms) {
+      permMap.set(p.key, p.id);
+    }
+
+    for (const role of allRoles) {
+      const allowedKeys = DEFAULT_ROLE_PERMISSIONS[role.name] || [];
+      for (const key of allowedKeys) {
+        if (key === '*') continue;
+        const permId = permMap.get(key);
+        if (permId) {
+          await connection.query(
+            `INSERT INTO role_permissions (role_id, permission_id)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE role_id = VALUES(role_id)`,
+            [role.id, permId]
+          );
+        }
+      }
+    }
+
     // Retrieve owner role ID
     const [roleRows] = await connection.query<RowDataPacket[]>(
       'SELECT id FROM roles WHERE name = ?',

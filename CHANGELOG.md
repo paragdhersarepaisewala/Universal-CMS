@@ -34,3 +34,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Logout endpoint with session revocation.
   - Forgot password and reset password flow with token invalidation and active session clearing.
   - Authenticated session inspection endpoint (/api/v1/auth/me).
+- Role-Based Access Control (RBAC) & Permission Matrix (CP2.5):
+  - Predefined 6 system roles: owner, admin, manager, editor, support, customer.
+  - Granular permissions definitions matrix across system domains (users, roles, content, modules, media, settings, email).
+  - RBAC service with fallback defaults, role permission persistence, and staff invitation engine.
+  - Fastify route guards: `requirePermission` and `requireRole` returning 403 FORBIDDEN when unauthorized.
+  - Admin RBAC endpoints: `GET /api/v1/admin/me`, `GET /api/v1/admin/roles`, `GET /api/v1/admin/permissions`, `PUT /api/v1/admin/roles/:id/permissions`, and `POST /api/v1/admin/users/invite`.
+  - Comprehensive contract test suite proving authorization enforcement, permission updates, and 403 status codes.

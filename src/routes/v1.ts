@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { healthRoutes } from './health.js';
 import { authRoutes } from './auth.js';
 import { adminModulesRoutes } from './admin/modules.js';
+import { adminRbacRoutes } from './admin/rbac.js';
 import { blogModuleManifest } from '../modules/blog/index.js';
 import { storeModuleManifest } from '../modules/store/index.js';
 
@@ -14,6 +15,7 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
 
   // Admin routes
   await fastify.register(adminModulesRoutes, { prefix: '/admin' });
+  await fastify.register(adminRbacRoutes, { prefix: '/admin' });
 
   // Optional module routes
   if (blogModuleManifest.routes) {

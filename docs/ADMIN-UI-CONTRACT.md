@@ -108,7 +108,7 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 | ID | Screen | Route | View permission | Status |
 |---|---|---|---|---|
 | SCR-CORE-LOGIN | Admin login | /admin/login | public | in-api |
-| SCR-CORE-DASH | Dashboard | /admin | core.dashboard.view | planned |
+| SCR-CORE-DASH | Dashboard | /admin | core.dashboard.view | in-api |
 | SCR-CORE-PAGES | Pages list | /admin/pages | core.pages.view | planned |
 | SCR-CORE-PAGE-EDIT | Page content editor (blocks) | /admin/pages/:id | core.pages.edit | planned |
 | SCR-CORE-MENUS | Menus and sub-menus | /admin/menus | core.menus.view | planned |
@@ -117,7 +117,7 @@ Status values: `planned`, `in-api`, `documented`, `built`.
 | SCR-CORE-SEO | Global and per-page SEO | /admin/seo | core.seo.view | planned |
 | SCR-CORE-REDIRECTS | Redirects | /admin/redirects | core.redirects.view | planned |
 | SCR-CORE-USERS | Users list and edit | /admin/users | core.users.view | planned |
-| SCR-CORE-ROLES | Roles and permission matrix | /admin/roles | core.roles.view | planned |
+| SCR-CORE-ROLES | Roles and permission matrix | /admin/roles | core.roles.view | in-api |
 | SCR-CORE-SETTINGS | Site settings | /admin/settings | core.settings.view | planned |
 | SCR-CORE-SMTP | SMTP setup and test send | /admin/email/smtp | core.email.settings | planned |
 | SCR-CORE-EMAIL-TPL | Email template library | /admin/email/templates | core.email.view | planned |
@@ -313,3 +313,4 @@ Contract tests:     password never returned by GET; blank password keeps the sto
 | 0.1.0 | 0.1.0 | 2026-10-25 | Initial skeleton and CP2.1 core setup |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.3 Module toggles API and navigation endpoint (in-api) |
 | 0.1.0 | 0.1.0 | 2026-10-25 | CP2.4 Auth API: signup, login, lockout, 2FA, password resets (in-api) |
+| 0.1.0 | 0.1.0 | 2026-10-25 | CP2.5 RBAC: roles list, permission matrix update, staff invite, requirePermission/requireRole guards (in-api) |
