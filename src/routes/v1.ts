@@ -20,6 +20,7 @@ import { adminTokensRoutes } from './admin/tokens.js';
 import { adminWebhooksRoutes } from './admin/webhooks.js';
 import { adminFormsRoutes } from './admin/forms.js';
 import { adminBannersRoutes } from './admin/banners.js';
+import { publicAdSlotsRoutes, adminAdSlotsRoutes } from './admin/ad-slots.js';
 import { blogModuleManifest } from '../modules/blog/index.js';
 import { storeModuleManifest } from '../modules/store/index.js';
 
@@ -54,6 +55,10 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
   await fastify.register(adminWebhooksRoutes, { prefix: '/admin/webhooks' });
   await fastify.register(adminFormsRoutes, { prefix: '/admin/forms' });
   await fastify.register(adminBannersRoutes, { prefix: '/admin/banners' });
+  await fastify.register(adminAdSlotsRoutes, { prefix: '/admin/ad-slots' });
+
+  // Public ad slots
+  await fastify.register(publicAdSlotsRoutes, { prefix: '/ad-slots' });
 
   // Optional module routes
   if (blogModuleManifest.routes) {

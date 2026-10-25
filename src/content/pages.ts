@@ -31,8 +31,55 @@ export interface PageMutation {
   version?: number;
 }
 
-let inMemoryPages: PageItem[] = [];
-let pageIdCounter = 1;
+let inMemoryPages: PageItem[] = [
+  {
+    id: 100,
+    title: '404 - Page Not Found',
+    slug: '404',
+    status: 'published',
+    publishedAt: new Date(),
+    version: 1,
+    blocks: [
+      {
+        id: 1,
+        blockType: 'hero',
+        data: {
+          heading: '404 - Page Not Found',
+          subheading: 'The page you are looking for has been moved or does not exist.',
+          ctaText: 'Return Home',
+          ctaLink: '/',
+        },
+        sortOrder: 0,
+        isActive: true,
+      },
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 101,
+    title: 'Site Under Maintenance',
+    slug: 'maintenance',
+    status: 'published',
+    publishedAt: new Date(),
+    version: 1,
+    blocks: [
+      {
+        id: 2,
+        blockType: 'hero',
+        data: {
+          heading: 'Under Scheduled Maintenance',
+          subheading: 'We are currently upgrading our platform. We will be back shortly.',
+        },
+        sortOrder: 0,
+        isActive: true,
+      },
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+let pageIdCounter = 102;
 
 export class PageService {
   static async listPages(params: { status?: string; page?: number; perPage?: number }): Promise<{

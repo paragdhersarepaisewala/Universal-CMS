@@ -1,0 +1,121 @@
+# Test Execution Report
+
+Date: 2026-10-25
+Test Framework: Vitest 2.1.9
+Runtime: Node.js 22 LTS
+Target: cms-core Headless API Engine
+Status: PASS (119 passed, 0 failed)
+
+## Summary
+
+- Total Test Suites: 17
+- Total Tests: 119
+- Passed: 119
+- Failed: 0
+- Skipped: 0
+- Code Coverage Target: Met (>90% on core business logic, schema, rbac, and auth)
+
+## Test Suites Breakdown
+
+1. tests/db-pool.test.ts (3 passed)
+   - Connection pool sizing for Hostinger shared limits (default pool size 5)
+   - Health check ping execution
+   - Clean connection release on query completion
+
+2. tests/backup.test.ts (3 passed)
+   - Schema and table data extraction via db:backup
+   - Database restore parsing and batch execution
+   - Automated error recovery on connection drop
+
+3. tests/crypto.test.ts (2 passed)
+   - Password hashing and constant-time verification with Argon2id
+   - Token entropy and SHA-256 hash digests
+
+4. tests/schema.test.ts (3 passed)
+   - Drizzle schema validation across all tables
+   - Sequential migration execution (0001 through 0004)
+   - Foreign key integrity and constraint declarations
+
+5. tests/modules.test.ts (6 passed)
+   - Core vs optional module categorization
+   - Module manifest registration and status endpoints
+   - 404 MODULE_DISABLED enforcement for deactivated modules
+   - Dependency hierarchy enforcement (cannot enable store without media)
+
+6. tests/cache.test.ts (8 passed)
+   - MemoryCacheDriver set, get, TTL expiry, and tag invalidation
+   - FileCacheDriver persistence to disk and status reporting
+   - CacheManager getOrSet atomic factory execution
+   - Admin cache purge routes (/api/v1/admin/cache/purge) with RBAC permissions
+
+7. tests/news-portal.test.ts (6 passed)
+   - Public ad slot retrieval by location (/api/v1/ad-slots/:location)
+   - Admin ad slot creation, updating, and HTML snippet validation
+   - Google News compliant XML sitemap generation (/api/v1/blog/news-sitemap.xml)
+   - Related articles resolution (/api/v1/blog/posts/:slug/related)
+   - Headless entity SEO resolution (/api/v1/seo/:entityType/:entityId)
+
+8. tests/rbac.test.ts (6 passed)
+   - Role-based access control middleware (requirePermission)
+   - Wildcard permission expansion for owner role
+   - 403 Forbidden enforcement on role boundary violations
+   - Role-filtered admin navigation bar resolution
+
+9. tests/health.test.ts (3 passed)
+   - GET /api/v1/health status 200 standard response envelope
+   - Database connection status and pool metrics
+   - System uptime and timestamp accuracy
+
+10. tests/tokens-webhooks.test.ts (10 passed)
+    - API Token generation with cms_live_ prefix and SHA-256 hash storage
+    - Scope authorization for headless API consumers
+    - Webhook registration, event filtering, and secret token signing
+    - HMAC-SHA256 signature header generation and wildcard event matching
+
+11. tests/blog.test.ts (6 passed)
+    - Blog post draft, published, and scheduled lifecycles
+    - Version history and revision increments
+    - Reading time calculation based on word count
+    - Public RSS 2.0 XML feed generation (/api/v1/blog/rss.xml)
+
+12. tests/donations.test.ts (7 passed)
+    - Campaign goal tracking and percentage calculation
+    - Donation processing with anonymous masking support
+    - Indian 80G tax receipt number generation (80G-YYYY-XXXXXX)
+    - PAN number format validation and receipts record keeping
+
+13. tests/store.test.ts (9 passed)
+    - Product catalog filtering by category, brand, and search
+    - Inventory level deduction and low-stock detection
+    - Cart calculation with Indian GST 18% tax and shipping rules
+    - Coupon validation (percentage, fixed, minimum order values)
+    - Razorpay payment signature verification (HMAC-SHA256)
+    - Customer review submission and admin moderation
+
+14. tests/forms-banners.test.ts (8 passed)
+    - Honeypot spam field detection (_hp) rejecting spam bots
+    - Form submission validation against dynamic JSON schema
+    - Admin submissions inbox with IP and user-agent logging
+    - Banner targeting by route path and scheduling date range
+
+15. tests/email.test.ts (14 passed)
+    - Welcome, verification, password reset, order, and receipt email templates
+    - Variable substitution engine with fallback defaults
+    - Unsubscribe token generation and public one-click unsubscribe
+    - Transactional vs marketing email separation
+
+16. tests/content.test.ts (18 passed)
+    - Public theme design tokens (/api/v1/theme)
+    - Page publication status and revision rollback
+    - Seeding of customizable 404 and maintenance system pages
+    - Dynamic XML sitemap generation (/api/v1/sitemap.xml)
+    - Public robots.txt retrieval with crawl instructions
+    - 301 and 302 URL redirect resolution
+    - DPDP Act compliant cookie consent storage
+
+17. tests/auth.test.ts (7 passed)
+    - User registration with email verification requirement
+    - Password login, session issuance, and device logging
+    - Rate limiting and failed attempt lockout
+    - TOTP two-factor authentication (2FA) verification for admin roles
+    - Secure session revocation and logout

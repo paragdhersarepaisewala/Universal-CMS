@@ -453,4 +453,32 @@ describe('CP2.8 Content, Theme & Compliance API', () => {
       spy.mockRestore();
     });
   });
+
+  describe('Special System Pages (404 and Maintenance)', () => {
+    it('returns custom editable 404 page content at GET /api/v1/pages/404', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/pages/404',
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.slug).toBe('404');
+      expect(body.data.blocks).toBeDefined();
+      expect(body.data.blocks[0].data.heading).toContain('404');
+    });
+
+    it('returns custom editable maintenance page content at GET /api/v1/pages/maintenance', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/pages/maintenance',
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.data.slug).toBe('maintenance');
+      expect(body.data.blocks).toBeDefined();
+    });
+  });
 });
+

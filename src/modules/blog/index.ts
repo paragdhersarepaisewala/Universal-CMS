@@ -162,6 +162,40 @@ const blogRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return reply.header('Content-Type', 'application/xml; charset=utf-8').send(xml);
     }
   );
+
+  // 6. GET /blog/news-sitemap.xml - Google News XML sitemap
+  fastify.get(
+    '/news-sitemap.xml',
+    {
+      preHandler: [requireModule('blog')],
+      schema: {
+        description: 'Google News compatible XML sitemap of recent articles',
+        tags: ['Blog'],
+      },
+    },
+    async (_req, reply) => {
+      const xml = await BlogService.generateNewsSitemap();
+      return reply.header('Content-Type', 'application/xml; charset=utf-8').send(xml);
+    }
+  );
+
+  // 7. GET /blog/posts/:slug/related - Related articles
+  fastify.get(
+    '/posts/:slug/related',
+    {
+      preHandler: [requireModule('blog')],
+      schema: {
+        description: 'Get related articles for a given article',
+        tags: ['Blog'],
+        params: Type.Object({ slug: Type.String() }),
+      },
+    },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const related = await BlogService.getRelatedPosts(slug);
+      return reply.send({ data: related });
+    }
+  );
 };
 
 export const adminBlogRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {

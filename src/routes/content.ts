@@ -360,5 +360,51 @@ export const publicContentRoutes: FastifyPluginAsync = async (app: FastifyInstan
       return reply.send({ data: list });
     }
   );
+
+  // 12. GET /seo/:entityType/:entityId - Public entity SEO metadata
+  app.get(
+    '/seo/:entityType/:entityId',
+    {
+      schema: {
+        description: 'Get SEO metadata for a page, product, post, or category',
+        tags: ['Content'],
+        params: Type.Object({
+          entityType: Type.String(),
+          entityId: Type.String(),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { entityType, entityId } = req.params as { entityType: string; entityId: string };
+      const metadata = await SeoService.getEntitySeo(entityType, entityId);
+      return reply.send({ data: metadata });
+    }
+  );
+
+  // 13. GET /settings - Public general site settings & age gate config
+  app.get(
+    '/settings',
+    {
+      schema: {
+        description: 'Get public site settings and age verification configuration',
+        tags: ['Content'],
+      },
+    },
+    async (_req, reply) => {
+      const { SettingsService } = await import('../content/settings.js');
+      const settings = await SettingsService.getSettings();
+      return reply.send({
+        data: {
+          siteName: settings.siteName,
+          siteDescription: settings.siteDescription,
+          timezone: settings.timezone,
+          currency: settings.currency,
+          currencySymbol: settings.currencySymbol,
+          maintenanceMode: settings.maintenanceMode,
+          ageVerification: settings.ageVerification,
+        },
+      });
+    }
+  );
 };
 

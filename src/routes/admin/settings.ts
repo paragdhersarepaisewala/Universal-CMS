@@ -29,6 +29,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (app: FastifyInstan
               invoicePrefix: Type.String(),
               invoiceNextNumber: Type.Number(),
               maintenanceMode: Type.Boolean(),
+              ageVerification: Type.Optional(Type.Any()),
               version: Type.Number(),
             }),
           }),
@@ -62,6 +63,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (app: FastifyInstan
           invoicePrefix: Type.Optional(Type.String()),
           invoiceNextNumber: Type.Optional(Type.Number()),
           maintenanceMode: Type.Optional(Type.Boolean()),
+          ageVerification: Type.Optional(Type.Any()),
           version: Type.Optional(Type.Number()),
         }),
         response: {
@@ -78,6 +80,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (app: FastifyInstan
               invoicePrefix: Type.String(),
               invoiceNextNumber: Type.Number(),
               maintenanceMode: Type.Boolean(),
+              ageVerification: Type.Optional(Type.Any()),
               version: Type.Number(),
             }),
           }),

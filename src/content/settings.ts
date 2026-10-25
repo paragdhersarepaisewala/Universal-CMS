@@ -15,6 +15,15 @@ export interface SiteSettings {
   invoicePrefix: string;
   invoiceNextNumber: number;
   maintenanceMode: boolean;
+  ageVerification?: {
+    enabled: boolean;
+    minAge: number;
+    mode: 'dob' | 'checkbox' | 'restricted';
+    rememberDurationDays: number;
+    restrictedCategories?: string[];
+    restrictedProducts?: string[];
+    clientNotice: string;
+  };
   version: number;
 }
 
@@ -30,6 +39,13 @@ const DEFAULT_SETTINGS: SiteSettings = {
   invoicePrefix: 'INV-2026-',
   invoiceNextNumber: 1001,
   maintenanceMode: false,
+  ageVerification: {
+    enabled: false,
+    minAge: 18,
+    mode: 'checkbox',
+    rememberDurationDays: 30,
+    clientNotice: 'A self-declared gate is a notice, not proof of age; if a stricter law or product category requires real verification, add a verification provider adapter.',
+  },
   version: 1,
 };
 

@@ -2180,6 +2180,50 @@
         }
       }
     },
+    "/seo/{entityType}/{entityId}": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "description": "Get SEO metadata for a page, product, post, or category",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "entityType",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "entityId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/settings": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "description": "Get public site settings and age verification configuration",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/admin/modules": {
       "get": {
         "tags": [
@@ -6836,6 +6880,7 @@
                         "maintenanceMode": {
                           "type": "boolean"
                         },
+                        "ageVerification": {},
                         "version": {
                           "type": "number"
                         }
@@ -6911,6 +6956,7 @@
                   "maintenanceMode": {
                     "type": "boolean"
                   },
+                  "ageVerification": {},
                   "version": {
                     "type": "number"
                   }
@@ -6968,6 +7014,7 @@
                         "maintenanceMode": {
                           "type": "boolean"
                         },
+                        "ageVerification": {},
                         "version": {
                           "type": "number"
                         }
@@ -8293,6 +8340,99 @@
         }
       }
     },
+    "/admin/ad-slots/": {
+      "get": {
+        "tags": [
+          "Admin Ad Slots"
+        ],
+        "description": "List configured ad slots and script tags",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/ad-slots/{location}": {
+      "put": {
+        "tags": [
+          "Admin Ad Slots"
+        ],
+        "description": "Update ad slot code or toggle status",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "codeHtml": {
+                    "type": "string"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "codeHtml"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "location",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/ad-slots/{location}": {
+      "get": {
+        "tags": [
+          "Ad Slots"
+        ],
+        "description": "Get active ad slot code for rendering",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "location",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/blog/posts": {
       "get": {
         "tags": [
@@ -8643,6 +8783,42 @@
           "Blog"
         ],
         "description": "RSS 2.0 feed of published articles",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/blog/news-sitemap.xml": {
+      "get": {
+        "tags": [
+          "Blog"
+        ],
+        "description": "Google News compatible XML sitemap of recent articles",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/blog/posts/{slug}/related": {
+      "get": {
+        "tags": [
+          "Blog"
+        ],
+        "description": "Get related articles for a given article",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "slug",
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response"

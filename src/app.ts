@@ -1,5 +1,8 @@
 import Fastify, { FastifyInstance, FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
+import compress from '@fastify/compress';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { v1Routes } from './routes/v1.js';
@@ -15,10 +18,26 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     ...opts,
   });
 
+  // Security headers
+  app.register(helmet, {
+    contentSecurityPolicy: false, // Swagger UI requires inline scripts/styles
+  });
+
   // Enable CORS
   app.register(cors, {
     origin: true,
     credentials: true,
+  });
+
+  // Payload compression (gzip, deflate)
+  app.register(compress, {
+    global: true,
+  });
+
+  // Rate limiting (100 req/min default, high limit for tests)
+  app.register(rateLimit, {
+    max: process.env.NODE_ENV === 'test' ? 10000 : 100,
+    timeWindow: '1 minute',
   });
 
   // Configure OpenAPI Swagger generation

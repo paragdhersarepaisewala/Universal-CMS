@@ -15,6 +15,7 @@ export interface BlogPostRecord {
   publishedAt?: string | null;
   readingTimeMinutes: number;
   isFeatured: boolean;
+  isBreaking?: boolean;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -59,6 +60,7 @@ const inMemoryPosts: BlogPostRecord[] = [
     publishedAt: new Date().toISOString(),
     readingTimeMinutes: 1,
     isFeatured: true,
+    isBreaking: false,
     version: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -324,4 +326,33 @@ export class BlogService {
   </channel>
 </rss>`;
   }
+
+  static async generateNewsSitemap(siteName: string = 'Universal CMS News', siteUrl: string = 'http://localhost:3000'): Promise<string> {
+    const { data: posts } = await this.listPosts({ status: 'published' });
+
+    const itemsXml = posts.map(p => `
+    <url>
+      <loc>${siteUrl}/blog/${p.slug}</loc>
+      <news:news>
+        <news:publication>
+          <news:name>${siteName}</news:name>
+          <news:language>en</news:language>
+        </news:publication>
+        <news:publication_date>${p.publishedAt ? new Date(p.publishedAt).toISOString() : new Date().toISOString()}</news:publication_date>
+        <news:title><![CDATA[${p.title}]]></news:title>
+      </news:news>
+    </url>`).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+  ${itemsXml}
+</urlset>`;
+  }
+
+  static async getRelatedPosts(currentSlug: string, limit: number = 3): Promise<BlogPostRecord[]> {
+    const { data: posts } = await this.listPosts({ status: 'published' });
+    return posts.filter(p => p.slug !== currentSlug).slice(0, limit);
+  }
 }
+
