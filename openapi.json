@@ -1,0 +1,184 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Universal CMS Core API",
+    "description": "Reusable headless CMS REST API specification",
+    "version": "0.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "description": "System health check and database connectivity status",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ok"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "degraded"
+                              ]
+                            }
+                          ]
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "uptimeSeconds": {
+                          "type": "number"
+                        },
+                        "timestamp": {
+                          "type": "string"
+                        },
+                        "environment": {
+                          "type": "string"
+                        },
+                        "database": {
+                          "type": "object",
+                          "properties": {
+                            "connected": {
+                              "type": "boolean"
+                            },
+                            "poolLimit": {
+                              "type": "number"
+                            },
+                            "error": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "connected",
+                            "poolLimit"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "version",
+                        "uptimeSeconds",
+                        "timestamp",
+                        "environment",
+                        "database"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ok"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "degraded"
+                              ]
+                            }
+                          ]
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "uptimeSeconds": {
+                          "type": "number"
+                        },
+                        "timestamp": {
+                          "type": "string"
+                        },
+                        "environment": {
+                          "type": "string"
+                        },
+                        "database": {
+                          "type": "object",
+                          "properties": {
+                            "connected": {
+                              "type": "boolean"
+                            },
+                            "poolLimit": {
+                              "type": "number"
+                            },
+                            "error": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "connected",
+                            "poolLimit"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "version",
+                        "uptimeSeconds",
+                        "timestamp",
+                        "environment",
+                        "database"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Current environment API v1 base"
+    }
+  ]
+}
