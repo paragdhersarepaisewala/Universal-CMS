@@ -16,5 +16,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Automated OpenAPI 3.0 specification generation from Fastify TypeBox schemas.
 - Health check endpoint under /api/v1/health reporting process uptime, environment, and database pool status.
 - Background job processing architecture documented (MySQL jobs table with cron-driven runner, avoiding in-process persistent daemons).
-- Vitest test suite and ESLint linting pipeline.
 - GitHub Actions CI workflow using Node.js 22.
+- Complete core MySQL schema (19 tables): users, roles, permissions, role_permissions, sessions, audit_logs, settings, modules, theme_tokens, pages, content_blocks, menus, menu_items, media, redirects, seo_meta, email_templates, email_logs, jobs.
+- Added optimistic concurrency version columns to editable entities.
+- Migration runner updated with 0002_core_schema_cp2_2 executing all DDL definitions with foreign indexes and utf8mb4 collation.

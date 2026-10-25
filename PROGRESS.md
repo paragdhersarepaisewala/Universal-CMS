@@ -29,7 +29,7 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [~] Account deletion and data export request - belongs to client repo
 
 ### Roles and permissions
-- [ ] Roles: owner, admin, manager, editor, support, customer
+- [x] Roles: owner, admin, manager, editor, support, customer
 - [~] Permission matrix editable in admin - belongs to client repo
 - [ ] Server-side permission check on every admin route and endpoint
 - [ ] Invite staff by email with a role
@@ -232,7 +232,7 @@ Performance 90 or higher, Accessibility 95 or higher, Best Practices 95 or highe
 - [~] Server-side rendering on all public pages - belongs to client repo
 - [ ] Compress API payloads (gzip or brotli) and return only needed fields
 - [ ] Optimize database queries (EXPLAIN reviewed, indexes added, N+1 removed)
-- [ ] Database connection pooling configured and sized for the Hostinger limit
+- [x] Database connection pooling configured and sized for the Hostinger limit
 - [ ] Paginate all large lists (API and admin)
 - [~] Fix unnecessary re-renders - belongs to client repo
 - [ ] Fix memory leaks (listeners, timers, subscriptions, GSAP and Lenis cleanup, server-side)
