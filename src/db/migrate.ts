@@ -375,6 +375,259 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0003_auth_tokens completed.');
+    }
+
+    // Check 0004_features_expansion
+    const [rows4] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0004_features_expansion']
+    );
+
+    if (rows4.length === 0) {
+      console.log('[Migration] Applying 0004_features_expansion...');
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS forms (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(150) NOT NULL,
+          slug VARCHAR(100) NOT NULL UNIQUE,
+          description TEXT NULL,
+          fields JSON NOT NULL,
+          submit_button_text VARCHAR(100) NOT NULL DEFAULT 'Submit',
+          success_message TEXT NULL,
+          notification_email VARCHAR(255) NULL,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS form_submissions (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          form_id BIGINT UNSIGNED NOT NULL,
+          data JSON NOT NULL,
+          ip_address VARCHAR(45) NULL,
+          user_agent TEXT NULL,
+          is_read BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_submissions_form (form_id),
+          INDEX idx_submissions_read (is_read)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS banners (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(150) NOT NULL,
+          type VARCHAR(50) NOT NULL DEFAULT 'announcement_bar',
+          content TEXT NOT NULL,
+          link_url VARCHAR(500) NULL,
+          button_text VARCHAR(100) NULL,
+          location VARCHAR(50) NOT NULL DEFAULT 'top',
+          target_pages JSON NULL,
+          start_at TIMESTAMP NULL,
+          end_at TIMESTAMP NULL,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS blog_categories (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(150) NOT NULL,
+          slug VARCHAR(100) NOT NULL UNIQUE,
+          description TEXT NULL,
+          parent_id BIGINT UNSIGNED NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS blog_tags (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(100) NOT NULL,
+          slug VARCHAR(100) NOT NULL UNIQUE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS blog_posts (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          slug VARCHAR(255) NOT NULL UNIQUE,
+          excerpt TEXT NULL,
+          content TEXT NOT NULL,
+          author_id BIGINT UNSIGNED NOT NULL,
+          featured_image_id BIGINT UNSIGNED NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'draft',
+          published_at TIMESTAMP NULL,
+          reading_time_minutes INT NOT NULL DEFAULT 1,
+          is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_blog_status (status),
+          INDEX idx_blog_author (author_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS products (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          slug VARCHAR(255) NOT NULL UNIQUE,
+          description TEXT NULL,
+          sku VARCHAR(100) NULL UNIQUE,
+          price INT NOT NULL,
+          compare_at_price INT NULL,
+          cost_price INT NULL,
+          stock_quantity INT NOT NULL DEFAULT 0,
+          low_stock_threshold INT NOT NULL DEFAULT 5,
+          track_inventory BOOLEAN NOT NULL DEFAULT TRUE,
+          status VARCHAR(20) NOT NULL DEFAULT 'draft',
+          is_age_restricted BOOLEAN NOT NULL DEFAULT FALSE,
+          featured_image_id BIGINT UNSIGNED NULL,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_products_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS product_variants (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          product_id BIGINT UNSIGNED NOT NULL,
+          title VARCHAR(150) NOT NULL,
+          sku VARCHAR(100) NULL,
+          price INT NOT NULL,
+          stock_quantity INT NOT NULL DEFAULT 0,
+          attributes JSON NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_variants_product (product_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS orders (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_number VARCHAR(50) NOT NULL UNIQUE,
+          customer_id BIGINT UNSIGNED NULL,
+          customer_email VARCHAR(255) NOT NULL,
+          status VARCHAR(30) NOT NULL DEFAULT 'pending',
+          payment_method VARCHAR(50) NOT NULL DEFAULT 'razorpay',
+          payment_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+          payment_id VARCHAR(100) NULL,
+          subtotal INT NOT NULL,
+          tax_total INT NOT NULL DEFAULT 0,
+          shipping_total INT NOT NULL DEFAULT 0,
+          discount_total INT NOT NULL DEFAULT 0,
+          total INT NOT NULL,
+          currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+          shipping_address JSON NULL,
+          billing_address JSON NULL,
+          notes TEXT NULL,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_orders_customer (customer_id),
+          INDEX idx_orders_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS order_items (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          product_id BIGINT UNSIGNED NOT NULL,
+          variant_id BIGINT UNSIGNED NULL,
+          title VARCHAR(255) NOT NULL,
+          sku VARCHAR(100) NULL,
+          price INT NOT NULL,
+          quantity INT NOT NULL DEFAULT 1,
+          total INT NOT NULL,
+          INDEX idx_order_items_order (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS coupons (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          code VARCHAR(50) NOT NULL UNIQUE,
+          discount_type VARCHAR(20) NOT NULL DEFAULT 'percentage',
+          discount_value INT NOT NULL,
+          min_order_amount INT NOT NULL DEFAULT 0,
+          max_discount_amount INT NULL,
+          usage_limit INT NULL,
+          usage_count INT NOT NULL DEFAULT 0,
+          expires_at TIMESTAMP NULL,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_coupons_code (code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS reviews (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          entity_type VARCHAR(50) NOT NULL DEFAULT 'product',
+          entity_id VARCHAR(50) NOT NULL,
+          user_id BIGINT UNSIGNED NULL,
+          author_name VARCHAR(150) NOT NULL,
+          author_email VARCHAR(255) NULL,
+          rating INT NOT NULL,
+          comment TEXT NOT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_reviews_entity (entity_type, entity_id),
+          INDEX idx_reviews_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS donation_campaigns (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          slug VARCHAR(255) NOT NULL UNIQUE,
+          goal_amount INT NOT NULL,
+          raised_amount INT NOT NULL DEFAULT 0,
+          description TEXT NULL,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS donations (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          campaign_id BIGINT UNSIGNED NOT NULL,
+          donor_name VARCHAR(150) NOT NULL,
+          donor_email VARCHAR(255) NOT NULL,
+          donor_pan VARCHAR(20) NULL,
+          amount INT NOT NULL,
+          payment_id VARCHAR(100) NULL,
+          is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          receipt_number VARCHAR(50) NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_donations_campaign (campaign_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0004_features_expansion']
+      );
+
+      console.log('[Migration] 0004_features_expansion completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }

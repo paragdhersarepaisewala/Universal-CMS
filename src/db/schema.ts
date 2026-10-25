@@ -264,3 +264,205 @@ export const jobs = mysqlTable('jobs', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
 });
+
+// 20. Forms & Submissions
+export const forms = mysqlTable('forms', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 150 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  description: text('description'),
+  fields: json('fields').notNull(), // Array<{ name, label, type, required, options }>
+  submitButtonText: varchar('submit_button_text', { length: 100 }).default('Submit').notNull(),
+  successMessage: text('success_message'),
+  notificationEmail: varchar('notification_email', { length: 255 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const formSubmissions = mysqlTable('form_submissions', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  formId: bigint('form_id', { mode: 'number', unsigned: true }).notNull(),
+  data: json('data').notNull(),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  userAgent: text('user_agent'),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 21. Banners & Announcements
+export const banners = mysqlTable('banners', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 150 }).notNull(),
+  type: varchar('type', { length: 50 }).default('announcement_bar').notNull(), // announcement_bar, popup, toast
+  content: text('content').notNull(),
+  linkUrl: varchar('link_url', { length: 500 }),
+  buttonText: varchar('button_text', { length: 100 }),
+  location: varchar('location', { length: 50 }).default('top').notNull(),
+  targetPages: json('target_pages'), // e.g. ["*"] or ["/store", "/about"]
+  startAt: timestamp('start_at'),
+  endAt: timestamp('end_at'),
+  isActive: boolean('is_active').default(true).notNull(),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+// 22. Blog (Posts, Categories, Tags)
+export const blogCategories = mysqlTable('blog_categories', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 150 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  description: text('description'),
+  parentId: bigint('parent_id', { mode: 'number', unsigned: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const blogTags = mysqlTable('blog_tags', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 100 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const blogPosts = mysqlTable('blog_posts', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  title: varchar('title', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  excerpt: text('excerpt'),
+  content: text('content').notNull(),
+  authorId: bigint('author_id', { mode: 'number', unsigned: true }).notNull(),
+  featuredImageId: bigint('featured_image_id', { mode: 'number', unsigned: true }),
+  status: varchar('status', { length: 20 }).default('draft').notNull(), // draft, published, scheduled, archived
+  publishedAt: timestamp('published_at'),
+  readingTimeMinutes: int('reading_time_minutes').default(1).notNull(),
+  isFeatured: boolean('is_featured').default(false).notNull(),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+// 23. Ecommerce Store (Products, Variants, Orders, Items, Coupons)
+export const products = mysqlTable('products', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  description: text('description'),
+  sku: varchar('sku', { length: 100 }).unique(),
+  price: int('price').notNull(), // Smallest currency unit (paisa / cents)
+  compareAtPrice: int('compare_at_price'),
+  costPrice: int('cost_price'),
+  stockQuantity: int('stock_quantity').default(0).notNull(),
+  lowStockThreshold: int('low_stock_threshold').default(5).notNull(),
+  trackInventory: boolean('track_inventory').default(true).notNull(),
+  status: varchar('status', { length: 20 }).default('draft').notNull(), // draft, active, archived
+  isAgeRestricted: boolean('is_age_restricted').default(false).notNull(),
+  featuredImageId: bigint('featured_image_id', { mode: 'number', unsigned: true }),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const productVariants = mysqlTable('product_variants', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  title: varchar('title', { length: 150 }).notNull(),
+  sku: varchar('sku', { length: 100 }),
+  price: int('price').notNull(),
+  stockQuantity: int('stock_quantity').default(0).notNull(),
+  attributes: json('attributes'), // e.g. { size: "L", color: "Black" }
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const orders = mysqlTable('orders', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
+  customerId: bigint('customer_id', { mode: 'number', unsigned: true }),
+  customerEmail: varchar('customer_email', { length: 255 }).notNull(),
+  status: varchar('status', { length: 30 }).default('pending').notNull(), // pending, processing, shipped, delivered, cancelled, refunded
+  paymentMethod: varchar('payment_method', { length: 50 }).default('razorpay').notNull(), // razorpay, cod
+  paymentStatus: varchar('payment_status', { length: 30 }).default('pending').notNull(), // pending, captured, failed, refunded
+  paymentId: varchar('payment_id', { length: 100 }),
+  subtotal: int('subtotal').notNull(),
+  taxTotal: int('tax_total').default(0).notNull(),
+  shippingTotal: int('shipping_total').default(0).notNull(),
+  discountTotal: int('discount_total').default(0).notNull(),
+  total: int('total').notNull(),
+  currency: varchar('currency', { length: 10 }).default('INR').notNull(),
+  shippingAddress: json('shipping_address'),
+  billingAddress: json('billing_address'),
+  notes: text('notes'),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const orderItems = mysqlTable('order_items', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  variantId: bigint('variant_id', { mode: 'number', unsigned: true }),
+  title: varchar('title', { length: 255 }).notNull(),
+  sku: varchar('sku', { length: 100 }),
+  price: int('price').notNull(),
+  quantity: int('quantity').default(1).notNull(),
+  total: int('total').notNull(),
+});
+
+export const coupons = mysqlTable('coupons', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  code: varchar('code', { length: 50 }).notNull().unique(),
+  discountType: varchar('discount_type', { length: 20 }).default('percentage').notNull(), // percentage, fixed
+  discountValue: int('discount_value').notNull(), // 10 = 10% or 1000 = Rs 10
+  minOrderAmount: int('min_order_amount').default(0).notNull(),
+  maxDiscountAmount: int('max_discount_amount'),
+  usageLimit: int('usage_limit'),
+  usageCount: int('usage_count').default(0).notNull(),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 24. Reviews & Ratings
+export const reviews = mysqlTable('reviews', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  entityType: varchar('entity_type', { length: 50 }).default('product').notNull(), // product, site
+  entityId: varchar('entity_id', { length: 50 }).notNull(),
+  userId: bigint('user_id', { mode: 'number', unsigned: true }),
+  authorName: varchar('author_name', { length: 150 }).notNull(),
+  authorEmail: varchar('author_email', { length: 255 }),
+  rating: int('rating').notNull(), // 1 - 5
+  comment: text('comment').notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, approved, rejected
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 25. Donation Campaigns & Contributions
+export const donationCampaigns = mysqlTable('donation_campaigns', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  title: varchar('title', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  goalAmount: int('goal_amount').notNull(),
+  raisedAmount: int('raised_amount').default(0).notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const donations = mysqlTable('donations', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  campaignId: bigint('campaign_id', { mode: 'number', unsigned: true }).notNull(),
+  donorName: varchar('donor_name', { length: 150 }).notNull(),
+  donorEmail: varchar('donor_email', { length: 255 }).notNull(),
+  donorPan: varchar('donor_pan', { length: 20 }), // For Indian 80G tax receipt
+  amount: int('amount').notNull(),
+  paymentId: varchar('payment_id', { length: 100 }),
+  isAnonymous: boolean('is_anonymous').default(false).notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, completed, failed
+  receiptNumber: varchar('receipt_number', { length: 50 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+

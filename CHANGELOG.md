@@ -76,5 +76,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Outbound Webhooks Service (`src/webhooks/service.ts`) with HMAC SHA-256 signature calculation, event filtering, wildcard subscription support, and job dispatching.
   - Admin webhook endpoints (`/api/v1/admin/webhooks`) for subscription registration, testing, and lifecycle management.
   - Complete API documentation reference guide (`docs/API.md`) detailing authentication, error envelopes, pagination, and all endpoint categories.
-  - Updated Admin UI contract (`docs/ADMIN-UI-CONTRACT.md`) adding screen specifications for `SCR-CORE-TOKENS` and `SCR-CORE-WEBHOOKS`.
+- Forms & Submissions Engine:
+  - Dynamic forms management (`FormsService`, `/api/v1/forms/*`, `/api/v1/admin/forms/*`) with TypeBox validation, honeypot spam filtering, submission inbox, read receipts, and notification email queue.
+- Promotional Banners & Announcements Engine:
+  - Banners service (`BannersService`, `/api/v1/banners`, `/api/v1/admin/banners`) with announcement bars, popups, toasts, route targeting, and date scheduling.
+- Blog Publishing Engine:
+  - Blog module (`BlogService`, `/api/v1/blog/*`, `/api/v1/admin/blog/*`) with articles, categories, tags, auto-computed reading times, draft/scheduled/published statuses, and RSS 2.0 XML feed.
+- Ecommerce Catalog & Checkout Engine:
+  - Store module (`StoreService`, `/api/v1/store/*`, `/api/v1/admin/store/*`) with product inventory, cart calculation with 18% GST and shipping rules, coupon discount validation (fixed and percentage), order placement, Razorpay HMAC signature verification, cash-on-delivery support, order status workflows, and product reviews with moderation.
+- Fundraising & Donations Engine:
+  - Donations module (`DonationService`, `/api/v1/donations/*`, `/api/v1/admin/donations/*`) with campaign progress metrics, one-time contributions via Razorpay, anonymous donor privacy masking, and automatic Indian 80G tax receipt issuance.
+
 

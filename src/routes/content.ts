@@ -235,4 +235,130 @@ export const publicContentRoutes: FastifyPluginAsync = async (app: FastifyInstan
       return reply.send({ data: result });
     }
   );
+
+  // 9. GET /forms/:slug - Get public form schema
+  app.get(
+    '/forms/:slug',
+    {
+      schema: {
+        description: 'Get public form structure and fields schema by slug',
+        tags: ['Content'],
+        params: Type.Object({
+          slug: Type.String(),
+        }),
+        response: {
+          200: Type.Object({
+            data: Type.Object({
+              id: Type.Number(),
+              name: Type.String(),
+              slug: Type.String(),
+              description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+              fields: Type.Array(Type.Any()),
+              submitButtonText: Type.String(),
+            }),
+          }),
+          404: Type.Object({
+            error: Type.Object({ code: Type.String(), message: Type.String() }),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const form = await (await import('../forms/service.js')).FormsService.getFormBySlug(slug);
+      if (!form || !form.isActive) {
+        return reply.status(404).send({
+          error: { code: 'NOT_FOUND', message: `Form '${slug}' not found or inactive` },
+        });
+      }
+      return reply.send({
+        data: {
+          id: form.id,
+          name: form.name,
+          slug: form.slug,
+          description: form.description,
+          fields: form.fields,
+          submitButtonText: form.submitButtonText,
+        },
+      });
+    }
+  );
+
+  // 10. POST /forms/:slug/submit - Submit form
+  app.post(
+    '/forms/:slug/submit',
+    {
+      schema: {
+        description: 'Submit form data with honeypot spam protection',
+        tags: ['Content'],
+        params: Type.Object({
+          slug: Type.String(),
+        }),
+        body: Type.Record(Type.String(), Type.Any()),
+        response: {
+          200: Type.Object({
+            data: Type.Object({
+              submissionId: Type.Number(),
+              message: Type.String(),
+            }),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const { slug } = req.params as { slug: string };
+      const body = req.body as Record<string, unknown>;
+
+      try {
+        const result = await (await import('../forms/service.js')).FormsService.submitForm(
+          slug,
+          body,
+          req.ip,
+          req.headers['user-agent']
+        );
+        return reply.send({ data: result });
+      } catch (err: unknown) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: err instanceof Error ? err.message : 'Submission failed',
+        });
+      }
+    }
+  );
+
+  // 11. GET /banners - Get active banners for current path
+  app.get(
+    '/banners',
+    {
+      schema: {
+        description: 'Get active promotional banners and announcement bars targeted for current route',
+        tags: ['Content'],
+        querystring: Type.Object({
+          path: Type.Optional(Type.String()),
+        }),
+        response: {
+          200: Type.Object({
+            data: Type.Array(
+              Type.Object({
+                id: Type.Number(),
+                name: Type.String(),
+                type: Type.String(),
+                content: Type.String(),
+                linkUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+                buttonText: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+                location: Type.String(),
+              })
+            ),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const { path = '/' } = req.query as { path?: string };
+      const list = await (await import('../banners/service.js')).BannersService.getActiveBannersForRoute(path);
+      return reply.send({ data: list });
+    }
+  );
 };
+

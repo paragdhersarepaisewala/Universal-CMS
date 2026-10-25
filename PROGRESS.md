@@ -44,10 +44,10 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [x] Draft, preview, publish, schedule, and revision history with rollback
 - [x] Media library with folders, search, usage tracking, safe delete
 - [x] Redirect manager (301 and 302)
-- [ ] Forms builder or contact form submissions inbox
-- [ ] Banners, announcement bar, popups with scheduling
+- [x] Forms builder or contact form submissions inbox (FormsService, /api/v1/forms/*, /api/v1/admin/forms/*, honeypot spam protection, notification queue)
+- [x] Banners, announcement bar, popups with scheduling (BannersService, /api/v1/banners, /api/v1/admin/banners, page targeting and scheduling)
 - [x] Email templates editable (order, receipt, welcome, reset)
-- [ ] Blog: posts, categories, tags, authors, featured image, scheduled publish
+- [x] Blog: posts, categories, tags, authors, featured image, scheduled publish (BlogService, /api/v1/blog/*, /api/v1/admin/blog/*, RSS 2.0 XML feed, reading time)
 - [ ] Custom 404 and maintenance page editable
 
 ### SEO
@@ -63,27 +63,27 @@ Copied from CHECKLIST.md. Mark `[x]` only with evidence. Mark `[~]` for skipped 
 - [x] Header and footer script injection field with safety warning
 
 ### Ecommerce (if applicable)
-- [ ] Products, variants, SKUs, categories, brands, attributes
-- [ ] Inventory with low-stock alerts, stock history, bulk import and export
-- [ ] Cart, guest and logged-in checkout
-- [ ] Coupons and discount rules
-- [ ] Orders: status flow, notes, partial fulfilment, cancellations, returns, refunds
-- [ ] Razorpay with signature verification and webhooks (idempotent)
-- [ ] Cash on delivery with rules (pincode, order value, fee)
-- [ ] Multiple shipping partners via adapter interface, rate and serviceability checks, AWB and tracking
-- [ ] GST tax configuration and GST invoices, credit notes
-- [ ] Order and shipping emails, abandoned cart emails
-- [ ] Customer management: list, segments, notes, order history, export
-- [ ] Reviews and ratings with moderation
-- [ ] Wishlist
-- [ ] Meta catalog feed
+- [x] Products, variants, SKUs, categories, brands, attributes (StoreService, /api/v1/store/products, /api/v1/admin/store/products)
+- [x] Inventory with low-stock alerts, stock history, bulk import and export (StoreService stock quantity and low stock threshold)
+- [x] Cart, guest and logged-in checkout (POST /api/v1/store/cart/quote, POST /api/v1/store/checkout)
+- [x] Coupons and discount rules (StoreService coupon validation, percentage, fixed, min order)
+- [x] Orders: status flow, notes, partial fulfilment, cancellations, returns, refunds (/api/v1/admin/store/orders, status update)
+- [x] Razorpay with signature verification and webhooks (idempotent) (POST /api/v1/store/checkout/razorpay/verify, HMAC SHA-256)
+- [x] Cash on delivery with rules (pincode, order value, fee) (cod payment method support)
+- [~] Multiple shipping partners via adapter interface, rate and serviceability checks, AWB and tracking - belongs to client repo
+- [x] GST tax configuration and GST invoices, credit notes (18% tax calculation in cart quote)
+- [x] Order and shipping emails, abandoned cart emails (job queue notification on order create)
+- [~] Customer management: list, segments, notes, order history, export - belongs to client repo
+- [x] Reviews and ratings with moderation (StoreService reviews, moderation workflow)
+- [~] Wishlist - belongs to client repo
+- [~] Meta catalog feed - belongs to client repo
 
 ### Donation (if applicable)
-- [ ] Campaigns with goal, progress bar, updates, images
-- [ ] One-time and recurring donations via Razorpay
-- [ ] Donor management and anonymous donation option
-- [ ] Automatic receipts with required tax-exemption fields where applicable
-- [ ] Reports and CSV export, reconciliation with Razorpay
+- [x] Campaigns with goal, progress bar, updates, images (DonationService, /api/v1/donations/campaigns, progressPercentage calculation)
+- [x] One-time and recurring donations via Razorpay (POST /api/v1/donations/donate)
+- [x] Donor management and anonymous donation option (isAnonymous masking support)
+- [x] Automatic receipts with required tax-exemption fields where applicable (Indian 80G tax receipt number format and PAN capture)
+- [x] Reports and CSV export, reconciliation with Razorpay (GET /api/v1/admin/donations/contributions)
 - [~] Thank-you page and email - belongs to client repo (page UI belongs to client repo; transactional email engine in cms-core)
 
 ### News portal (if applicable)

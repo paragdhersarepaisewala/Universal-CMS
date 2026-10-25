@@ -18,6 +18,8 @@ import { adminSettingsRoutes } from './admin/settings.js';
 import { adminAuditRoutes } from './admin/audit.js';
 import { adminTokensRoutes } from './admin/tokens.js';
 import { adminWebhooksRoutes } from './admin/webhooks.js';
+import { adminFormsRoutes } from './admin/forms.js';
+import { adminBannersRoutes } from './admin/banners.js';
 import { blogModuleManifest } from '../modules/blog/index.js';
 import { storeModuleManifest } from '../modules/store/index.js';
 
@@ -31,7 +33,7 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
   // Public email endpoints (unsubscribe)
   await fastify.register(publicEmailRoutes, { prefix: '/email' });
 
-  // Public content endpoints (theme, pages, menus, sitemap, robots, redirects, cookie consent)
+  // Public content endpoints (theme, pages, menus, sitemap, robots, redirects, cookie consent, forms, banners)
   await fastify.register(publicContentRoutes);
 
   // Admin routes
@@ -50,13 +52,26 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
   await fastify.register(adminAuditRoutes, { prefix: '/admin/logs/audit' });
   await fastify.register(adminTokensRoutes, { prefix: '/admin/tokens' });
   await fastify.register(adminWebhooksRoutes, { prefix: '/admin/webhooks' });
+  await fastify.register(adminFormsRoutes, { prefix: '/admin/forms' });
+  await fastify.register(adminBannersRoutes, { prefix: '/admin/banners' });
 
   // Optional module routes
   if (blogModuleManifest.routes) {
     await fastify.register(blogModuleManifest.routes, { prefix: blogModuleManifest.routesPrefix });
+    const { adminBlogRoutes } = await import('../modules/blog/index.js');
+    await fastify.register(adminBlogRoutes, { prefix: '/admin/blog' });
   }
 
   if (storeModuleManifest.routes) {
     await fastify.register(storeModuleManifest.routes, { prefix: storeModuleManifest.routesPrefix });
+    const { adminStoreRoutes } = await import('../modules/store/index.js');
+    await fastify.register(adminStoreRoutes, { prefix: '/admin/store' });
+  }
+
+  const { donationModuleManifest, adminDonationRoutes } = await import('../modules/donations/index.js');
+  if (donationModuleManifest.routes) {
+    await fastify.register(donationModuleManifest.routes, { prefix: donationModuleManifest.routesPrefix });
+    await fastify.register(adminDonationRoutes, { prefix: '/admin/donations' });
   }
 };
+

@@ -247,6 +247,92 @@ Requires `Authorization: Bearer <token>` and administrative permissions.
 - `DELETE /api/v1/admin/webhooks/:id`
   - Remove webhook subscription.
 
+#### Forms & Submission Inboxes
+- `GET /api/v1/forms/:slug`
+  - Public endpoint returning form field definitions and submission rules.
+- `POST /api/v1/forms/:slug/submit`
+  - Submit form data with honeypot spam protection (`_hp`) and automated notification job dispatch.
+- `GET /api/v1/admin/forms`
+  - Admin list of all managed forms.
+- `POST /api/v1/admin/forms`
+  - Create dynamic form with field schemas.
+- `GET /api/v1/admin/forms/:id/submissions`
+  - View submission inbox for specific form.
+- `PATCH /api/v1/admin/forms/submissions/:subId/read`
+  - Mark submission as read.
+
+#### Promotional Banners & Announcements
+- `GET /api/v1/banners?path=/store`
+  - Public endpoint returning active promotional banners, announcement bars, or popups targeted for current route.
+- `GET /api/v1/admin/banners`
+  - List all banners with start/end schedules and target page routes.
+- `POST /api/v1/admin/banners`
+  - Create promotional announcement or modal popup.
+- `PUT /api/v1/admin/banners/:id`
+  - Update banner display rules and content.
+- `DELETE /api/v1/admin/banners/:id`
+  - Delete promotional banner.
+
+#### Blog Publishing Module
+- `GET /api/v1/blog/posts`
+  - Public listing of published articles with search, category filtering, and pagination.
+- `GET /api/v1/blog/posts/:slug`
+  - Public single article detail with content, author, and reading time in minutes.
+- `GET /api/v1/blog/categories`
+  - List public blog categories.
+- `GET /api/v1/blog/tags`
+  - List public blog tags.
+- `GET /api/v1/blog/rss.xml`
+  - Valid RSS 2.0 XML feed of all published articles.
+- `GET /api/v1/admin/blog/posts`
+  - Admin list of all articles including drafts and scheduled posts.
+- `POST /api/v1/admin/blog/posts`
+  - Create new blog article with auto-calculated reading time.
+- `PUT /api/v1/admin/blog/posts/:id`
+  - Update blog article content, status, or featured flag.
+- `DELETE /api/v1/admin/blog/posts/:id`
+  - Delete blog article.
+
+#### Ecommerce Store & Checkout Module
+- `GET /api/v1/store/products`
+  - Public product catalog with search, price filtering, and pagination.
+- `GET /api/v1/store/products/:slug`
+  - Public product details with price, stock, and descriptions.
+- `POST /api/v1/store/cart/quote`
+  - Calculate cart breakdown (subtotal, coupon discount, 18% standard GST tax, shipping fee, grand total).
+- `POST /api/v1/store/checkout`
+  - Place order via Razorpay or Cash on Delivery (COD) with customer and shipping details.
+- `POST /api/v1/store/checkout/razorpay/verify`
+  - Verify Razorpay HMAC-SHA256 signature and mark order captured/processing.
+- `GET /api/v1/store/products/:slug/reviews`
+  - View approved customer reviews for product.
+- `POST /api/v1/store/products/:slug/reviews`
+  - Submit product rating (1-5) and review comment for moderation.
+- `GET /api/v1/admin/store/products`
+  - Admin list of products with inventory stock levels.
+- `POST /api/v1/admin/store/products`
+  - Create store product.
+- `PUT /api/v1/admin/store/products/:id`
+  - Update product pricing, description, and stock quantity.
+- `GET /api/v1/admin/store/orders`
+  - Admin view of customer orders with fulfillment status filters.
+- `PUT /api/v1/admin/store/orders/:id/status`
+  - Advance order fulfillment status (`pending`, `processing`, `shipped`, `delivered`, `cancelled`).
+
+#### Fundraising & Donations Module
+- `GET /api/v1/donations/campaigns`
+  - Public list of active fundraising campaigns with goal, raised amount, and progress percentages.
+- `GET /api/v1/donations/campaigns/:slug`
+  - Public campaign details.
+- `POST /api/v1/donations/donate`
+  - Contribute donation with anonymous donor privacy option, PAN capture, and automatic Indian 80G tax receipt issuance.
+- `GET /api/v1/admin/donations/campaigns`
+  - Admin list of all campaigns.
+- `POST /api/v1/admin/donations/campaigns`
+  - Create fundraising campaign with target financial goal.
+- `GET /api/v1/admin/donations/contributions`
+  - Admin log of all contributions and 80G tax receipts.
+
 ---
 
 ## 5. Background Jobs Runner
