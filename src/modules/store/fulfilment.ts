@@ -54,8 +54,10 @@ export class PhysicalFulfilmentHandler implements FulfilmentHandler {
   }
 }
 
+import { DigitalDeliveryService } from '../digital/service.js';
+import { moduleRegistry } from '../registry.js';
+
 export class DigitalFulfilmentHandler implements FulfilmentHandler {
-  // Stub handler before H2.3D module: onPaid does nothing and returns 'pending'
   requiresShipping(_item: { productType: string }): boolean {
     return false;
   }
@@ -64,17 +66,29 @@ export class DigitalFulfilmentHandler implements FulfilmentHandler {
     return item.trackStock === true;
   }
 
-  async onPaid(_context: FulfilmentContext, _lineItem: FulfilmentLineItem, _tx?: any): Promise<FulfilmentResult> {
-    // Per specification: Digital orders before H2.3D stay in confirmed with line fulfilment_status pending
-    return { status: 'pending' };
+  async onPaid(context: FulfilmentContext, _lineItem: FulfilmentLineItem, tx?: any): Promise<FulfilmentResult> {
+    if (!moduleRegistry.isEnabled('digital-delivery')) {
+      return { status: 'pending' };
+    }
+
+    try {
+      await DigitalDeliveryService.issueEntitlementsForOrder(context.orderId, tx);
+      return { status: 'fulfilled' };
+    } catch (err: any) {
+      return { status: 'failed', details: { error: err.message } };
+    }
   }
 
-  async onRefund(_context: FulfilmentContext, _lineItem: FulfilmentLineItem, _quantity: number, _tx?: any): Promise<void> {
-    // Revocation stub
+  async onRefund(context: FulfilmentContext, lineItem: FulfilmentLineItem, _quantity: number, tx?: any): Promise<void> {
+    if (moduleRegistry.isEnabled('digital-delivery')) {
+      await DigitalDeliveryService.revokeEntitlementsForOrder(context.orderId, lineItem.id, tx);
+    }
   }
 
-  async onCancel(_context: FulfilmentContext, _lineItem: FulfilmentLineItem, _tx?: any): Promise<void> {
-    // Cancellation stub
+  async onCancel(context: FulfilmentContext, lineItem: FulfilmentLineItem, tx?: any): Promise<void> {
+    if (moduleRegistry.isEnabled('digital-delivery')) {
+      await DigitalDeliveryService.revokeEntitlementsForOrder(context.orderId, lineItem.id, tx);
+    }
   }
 }
 

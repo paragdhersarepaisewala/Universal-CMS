@@ -724,4 +724,53 @@ export const shippingShipments = mysqlTable('shipping_shipments', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
 });
 
+// 28. Digital Delivery Module (CP-H2.3D)
+export const digitalAssets = mysqlTable('digital_assets', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  variantId: bigint('variant_id', { mode: 'number', unsigned: true }),
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  storagePath: varchar('storage_path', { length: 500 }).notNull(),
+  fileSizeBytes: bigint('file_size_bytes', { mode: 'number' }).default(0).notNull(),
+  mimeType: varchar('mime_type', { length: 100 }).default('application/octet-stream').notNull(),
+  downloadLimit: int('download_limit').default(5).notNull(),
+  expiresHours: int('expires_hours').default(72).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const licenseKeys = mysqlTable('license_keys', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  productId: bigint('product_id', { mode: 'number', unsigned: true }).notNull(),
+  variantId: bigint('variant_id', { mode: 'number', unsigned: true }),
+  licenseKey: varchar('license_key', { length: 255 }).notNull().unique(),
+  status: varchar('status', { length: 50 }).default('available').notNull(), // available, assigned, revoked
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }),
+  orderItemId: bigint('order_item_id', { mode: 'number', unsigned: true }),
+  assignedAt: timestamp('assigned_at'),
+  metadataJson: json('metadata_json'),
+  version: int('version').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const digitalEntitlements = mysqlTable('digital_entitlements', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  orderId: bigint('order_id', { mode: 'number', unsigned: true }).notNull(),
+  orderItemId: bigint('order_item_id', { mode: 'number', unsigned: true }).notNull(),
+  customerId: bigint('customer_id', { mode: 'number', unsigned: true }),
+  assetId: bigint('asset_id', { mode: 'number', unsigned: true }),
+  licenseKeyId: bigint('license_key_id', { mode: 'number', unsigned: true }),
+  downloadToken: varchar('download_token', { length: 100 }).notNull().unique(),
+  downloadCount: int('download_count').default(0).notNull(),
+  maxDownloads: int('max_downloads').default(5).notNull(),
+  expiresAt: timestamp('expires_at'),
+  status: varchar('status', { length: 50 }).default('active').notNull(), // active, revoked, expired
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+
 

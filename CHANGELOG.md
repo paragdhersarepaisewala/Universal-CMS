@@ -155,3 +155,33 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - RBAC permissions registered: `shipping.view`, `shipping.manage`, `shipping.shipments.manage`.
   - Admin UI contract specs `SHIP-01`, `SHIP-02`, and `SHIP-03` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version bumped to `0.2.2`).
   - Integration test suite in `tests/shipping.test.ts` (16 tests covering zones, rates, serviceability, partner adapters, manifest generation, tracking webhooks, fulfillment transitions, module disable behaviors, and RBAC).
+
+## [0.2.3] - 2026-10-25T21:45:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.3D (Digital Delivery Module: Downloads, License Key Pools, Tokenized Expiration, Download Limits, Entitlements, Auto-Completion, and Refund Revocation):
+  - Database schema additions via migration `0008_digital_delivery_h2_3d`:
+    - Tables: `digital_assets`, `license_keys`, `digital_entitlements`.
+    - Secure indices on `product_id`, `license_key`, `download_token`, `status`, and foreign key cascades to `orders` and `order_items`.
+  - Digital Delivery Engine (`src/modules/digital/service.ts`):
+    - Cryptographically random download token generation (`dl_<64 hex chars>`).
+    - Expiration timestamps (`expires_at`) and download counters (`download_count`, `max_downloads`).
+    - Atomic license key reservation and assignment using `SELECT ... FOR UPDATE` row locks.
+    - Public license verification engine with format validation, active status check, and tamper resistance.
+    - Automatic digital order completion: digital line items are fulfilled on payment confirmation and order status automatically advances to `completed` if all items are digital.
+    - Entitlement and license key revocation lifecycle triggered on order refunds via `StoreService.refundOrder`.
+  - Storefront and Customer Endpoints:
+    - `GET /api/v1/digital/orders/:orderId/entitlements`: customer/guest entitlement retrieval with verified session/guest token.
+    - `GET /api/v1/digital/download/:token`: secure tokenized download endpoint streaming assets and enforcing quota/expiry limits.
+    - `POST /api/v1/digital/licenses/verify`: public license key verification endpoint.
+  - Admin Endpoints:
+    - `GET /api/v1/admin/digital/assets`, `POST /api/v1/admin/digital/assets`, `DELETE /api/v1/admin/digital/assets/:id`.
+    - `GET /api/v1/admin/digital/licenses`, `POST /api/v1/admin/digital/licenses/pool`.
+    - `POST /api/v1/admin/digital/entitlements/:id/revoke`.
+  - Module Disabling Behavior:
+    - Rejects digital product creation and checkout with 422 error when `digital-delivery` module is disabled.
+    - Disables public download and verification routes when module is inactive.
+  - RBAC Permissions: `digital.view` and `digital.manage`.
+  - Admin UI Contract specs `DIGITAL-01` and `DIGITAL-02` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.3`).
+  - Integration test suite in `tests/digital-delivery.test.ts` (10 real MySQL tests covering asset creation, license pool loading, digital checkout, entitlement issuance, auto-completion, download quota limits, expiration, public verification, refund revocation, admin manual revocation, and module disablement).
+

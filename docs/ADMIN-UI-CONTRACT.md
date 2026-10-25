@@ -522,6 +522,61 @@ Customer / Storefront Endpoints:
   Tracking Webhook  | POST /api/v1/shipping/webhook/:partner (inbound status update from carrier)
 ```
 
+### 5.24 Digital Delivery: Assets Management (`DIGITAL-01`)
+```
+Screen id:          DIGITAL-01
+Route in GUI:       /admin/digital/assets
+Module:             digital-delivery
+Permissions:        view = digital.view, actions = digital.manage
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/digital/assets
+  Query params:     productId (optional)
+  Row fields:       id, productId, variantId, fileName, storagePath, fileSizeBytes, mimeType, downloadLimit, expiresHours, isActive, createdAt
+
+Fields (Upload / Create):
+  Product           | productId         | select   | yes | Digital product identifier
+  Variant           | variantId         | select   | no  | Specific SKU variant (optional)
+  File Name         | fileName          | text     | yes | Customer-facing filename (e.g. guide-v1.pdf)
+  Storage Path      | storagePath       | text     | yes | Internal filesystem or S3 key path
+  File Size         | fileSizeBytes     | number   | no  | Size in bytes
+  MIME Type         | mimeType          | text     | no  | application/pdf, application/zip
+  Download Limit    | downloadLimit     | number   | yes | Maximum allowed downloads per token (default: 5)
+  Expiry (Hours)    | expiresHours      | number   | yes | Token expiration lifespan in hours (default: 72)
+
+Actions
+  Upload Asset      | POST /api/v1/admin/digital/assets | digital.manage | attaches file to digital product | audit digital.assets.create
+  Deactivate Asset  | DELETE /api/v1/admin/digital/assets/:id | digital.manage | marks asset inactive | audit digital.assets.delete
+```
+
+### 5.25 Digital Delivery: License Key Pools & Entitlements (`DIGITAL-02`)
+```
+Screen id:          DIGITAL-02
+Route in GUI:       /admin/digital/licenses
+Module:             digital-delivery
+Permissions:        view = digital.view, actions = digital.manage
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/digital/licenses
+  Query params:     productId, status (available, assigned, revoked), limit, offset
+  Row fields:       id, productId, variantId, licenseKey, status, orderId, orderItemId, assignedAt, metadataJson
+
+Fields (Pool Bulk Upload):
+  Product           | productId         | select   | yes | Digital product
+  Variant           | variantId         | select   | no  | Optional variant
+  License Keys      | keys              | textarea | yes | List of unique license keys (one per line)
+  Metadata          | metadata          | json     | no  | Custom activation attributes
+
+Actions
+  Bulk Upload Keys  | POST /api/v1/admin/digital/licenses/pool | digital.manage | populates license pool | audit digital.licenses.upload
+  Revoke Entitlement| POST /api/v1/admin/digital/entitlements/:id/revoke | digital.manage | revokes key and download access | audit digital.entitlements.revoke
+
+Storefront / Customer endpoints:
+  Order Entitlements| GET /api/v1/digital/orders/:orderId/entitlements (requires x-guest-token or user auth)
+  Secure Download   | GET /api/v1/digital/download/:token (validates expiry & download count, streams content)
+  Verify License    | POST /api/v1/digital/licenses/verify { licenseKey }
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -555,5 +610,6 @@ Customer / Storefront Endpoints:
 | 0.2.0 | 0.2.0 | 2026-10-25 | H2.1 Store Engine: atomic stock reservation, payments, Razorpay webhooks, state machine, order notes, refunds, digital/physical handlers (in-api) |
 | 0.2.1 | 0.2.1 | 2026-10-25 | H2.2 Store Engine: GST tax classes, Indian states/UTs, sequential FY invoices, credit notes, PDF generation, COD rule engine (in-api) |
 | 0.2.2 | 0.2.2 | 2026-10-25 | H2.3 Shipping Engine: zones, weight-based rates, partner adapters (Shiprocket, Delhivery, Manual), shipments, AWBs, live tracking, webhooks (in-api) |
+| 0.2.3 | 0.2.3 | 2026-10-25 | H2.3D Digital Delivery: digital assets, license key pools, tokenized downloads, order entitlements, revocation on refund (in-api) |
 
 

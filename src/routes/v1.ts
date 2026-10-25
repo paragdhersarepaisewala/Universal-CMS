@@ -88,5 +88,11 @@ export const v1Routes: FastifyPluginAsync = async (fastify: FastifyInstance) => 
     await fastify.register(donationModuleManifest.routes, { prefix: donationModuleManifest.routesPrefix });
     await fastify.register(adminDonationRoutes, { prefix: '/admin/donations' });
   }
+
+  const { digitalModuleManifest, adminDigitalRoutes } = await import('../modules/digital/index.js');
+  if (digitalModuleManifest.routes) {
+    await fastify.register(digitalModuleManifest.routes, { prefix: digitalModuleManifest.routesPrefix });
+    await fastify.register(adminDigitalRoutes, { prefix: '/admin/digital' });
+  }
 };
 

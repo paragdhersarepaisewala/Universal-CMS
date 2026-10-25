@@ -1172,6 +1172,91 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0007_shipping_module_h2_3 completed.');
+    }
+
+    // Check 0008_digital_delivery_h2_3d
+    const [rows8] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0008_digital_delivery_h2_3d']
+    );
+
+    if (rows8.length === 0) {
+      console.log('[Migration] Applying 0008_digital_delivery_h2_3d...');
+
+      // 1. Digital Assets Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS digital_assets (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          product_id BIGINT UNSIGNED NOT NULL,
+          variant_id BIGINT UNSIGNED NULL,
+          file_name VARCHAR(255) NOT NULL,
+          storage_path VARCHAR(500) NOT NULL,
+          file_size_bytes BIGINT NOT NULL DEFAULT 0,
+          mime_type VARCHAR(100) NOT NULL DEFAULT 'application/octet-stream',
+          download_limit INT NOT NULL DEFAULT 5,
+          expires_hours INT NOT NULL DEFAULT 72,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_digital_assets_product (product_id),
+          INDEX idx_digital_assets_variant (variant_id),
+          CONSTRAINT fk_digital_assets_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 2. License Keys Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS license_keys (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          product_id BIGINT UNSIGNED NOT NULL,
+          variant_id BIGINT UNSIGNED NULL,
+          license_key VARCHAR(255) NOT NULL UNIQUE,
+          status VARCHAR(50) NOT NULL DEFAULT 'available',
+          order_id BIGINT UNSIGNED NULL,
+          order_item_id BIGINT UNSIGNED NULL,
+          assigned_at TIMESTAMP NULL,
+          metadata_json JSON NULL,
+          version INT NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_license_product_status (product_id, status),
+          INDEX idx_license_order (order_id),
+          INDEX idx_license_key (license_key),
+          CONSTRAINT fk_license_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      // 3. Digital Entitlements Table
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS digital_entitlements (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          order_id BIGINT UNSIGNED NOT NULL,
+          order_item_id BIGINT UNSIGNED NOT NULL,
+          customer_id BIGINT UNSIGNED NULL,
+          asset_id BIGINT UNSIGNED NULL,
+          license_key_id BIGINT UNSIGNED NULL,
+          download_token VARCHAR(100) NOT NULL UNIQUE,
+          download_count INT NOT NULL DEFAULT 0,
+          max_downloads INT NOT NULL DEFAULT 5,
+          expires_at TIMESTAMP NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'active',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_entitlements_order (order_id),
+          INDEX idx_entitlements_token (download_token),
+          INDEX idx_entitlements_customer (customer_id),
+          CONSTRAINT fk_entitlements_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+          CONSTRAINT fk_entitlements_item FOREIGN KEY (order_item_id) REFERENCES order_items (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0008_digital_delivery_h2_3d']
+      );
+
+      console.log('[Migration] 0008_digital_delivery_h2_3d completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }

@@ -76,6 +76,8 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'shipping.view', module: 'shipping', description: 'View shipping zones, rates, and shipments' },
   { key: 'shipping.manage', module: 'shipping', description: 'Manage shipping zones, rates, and carrier settings' },
   { key: 'shipping.shipments.manage', module: 'shipping', description: 'Create shipments, generate AWBs, and update tracking' },
+  { key: 'digital.view', module: 'digital', description: 'View digital assets, entitlements, and license keys' },
+  { key: 'digital.manage', module: 'digital', description: 'Manage digital product files, license pools, and revoke entitlements' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -126,6 +128,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'shipping.view',
     'shipping.manage',
     'shipping.shipments.manage',
+    'digital.view',
+    'digital.manage',
   ],
 
   manager: [
