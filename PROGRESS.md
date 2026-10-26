@@ -74,12 +74,12 @@ Status Legend:
 - [x] sitemap.xml generated and listed in robots.txt (GET /api/v1/sitemap.xml and GET /api/v1/robots.txt, tested in tests/content.test.ts)
 - [x] robots.txt editable in admin (SeoService updateGlobalSeo with custom robots.txt, tested in tests/content.test.ts)
 - [x] Google Analytics (GA4) with ID set in admin (SeoService googleAnalyticsId setting, tested in tests/content.test.ts)
-- [ ] Meta Conversions API (CAPI) server-side event dispatch (metaPixelId setting saved; server-side CAPI event dispatch pending)
+- [x] Meta Conversions API (CAPI) server-side event dispatch - [2026-10-26 11:05 UTC+5:30] Implemented in src/modules/store/meta-capi.ts with normalized SHA-256 PII hashing (email, phone), Meta Graph API v18.0 event envelope construction, fallback dry-run mode when unconfigured, verified in tests/store-inventory-feeds.test.ts
 - [x] Header and footer script injection field with safety warning (SeoService headerScripts and footerScripts, tested in tests/content.test.ts)
 
 ### Ecommerce (if applicable)
 - [x] Products, variants, SKUs, categories, brands, attributes (StoreService, /api/v1/store/products, /api/v1/admin/store/products, tested in tests/store.test.ts)
-- [ ] Inventory stock history and bulk import/export (quantity and low-stock threshold implemented; history table and bulk CSV import/export pending)
+- [x] Inventory stock history and bulk import/export - [2026-10-26 11:05 UTC+5:30] Implemented migration 0010_stock_movements_h2_6 with stock_movements ledger table, StoreService getStockMovements, adjustStock (atomic transaction with backorder guards), exportProductsCsv (formula injection defense prefixing =, +, -, @), and importProductsCsv (RFC 4180 parsing, upsert logic, stock delta logging), endpoints GET /api/v1/admin/store/inventory/history, POST /api/v1/admin/store/inventory/adjust, GET /api/v1/admin/store/products/export, and POST /api/v1/admin/store/products/import, verified in tests/store-inventory-feeds.test.ts
 - [x] Cart, guest and logged-in checkout (POST /api/v1/store/cart/quote, POST /api/v1/store/checkout, tested in tests/store.test.ts)
 - [x] Coupons and discount rules (StoreService coupon validation, percentage, fixed, min order, tested in tests/store.test.ts)
 - [x] Orders: full/partial refunds with line items & restock, state machine transitions, notes, and order_status_history (StoreService, POST /orders/:id/refunds, POST /orders/:id/transition, tested in tests/store-h2-1.test.ts)
@@ -89,13 +89,13 @@ Status Legend:
 - [x] Digital products, tokenized downloads, license key pools, and order entitlements (Sub-checkpoint CP-H2.3D) - [2026-10-25 21:45 UTC+5:30] Complete digital delivery module in src/modules/digital/* with secure download token generation (dl_<hex>), expiration and download count limits (max_downloads), license key pooling (SELECT ... FOR UPDATE atomic reservation), automatic order entitlement issuance on payment, order auto-completion when all items are digital, customer order entitlements endpoint, public license key validation, admin pool management, admin single entitlement revocation, refund revocation hook in refundOrder, and Admin UI Contract DIGITAL-01 & DIGITAL-02 in docs/ADMIN-UI-CONTRACT.md, verified by 10 tests in tests/digital-delivery.test.ts.
 - [~] Shipping partner frontend integration and customer tracking view - belongs to client repo
 - [x] GST tax configuration, formal GST invoices, and credit notes - [2026-10-25 20:30 UTC+5:30] Full GST engine in src/modules/store/tax.ts & src/modules/store/invoice.ts supporting all 36 Indian states/UTs, UTGST without legislature, intra/interstate CGST/SGST/UTGST/IGST/CESS splitting, sequential Indian FY invoice/credit note numbers (INV/YYYY-YY/NNNN, CN/YYYY-YY/NNNN) with SELECT FOR UPDATE, verified in tests/store-h2-2.test.ts
-- [ ] Abandoned cart detection job and per-email on/off switches (order confirmation job enqueued; abandoned cart detector and email switches pending)
+- [x] Abandoned cart detection job and per-email on/off switches - [2026-10-26 11:05 UTC+5:30] Implemented StoreService.processAbandonedCarts scanning orders stuck in pending_payment beyond threshold minutes, checking email automation setting toggle (abandoned_cart), enqueuing recovery email, and recording staff note deduplication, integrated into POST /api/v1/jobs/process runner, verified in tests/store-inventory-feeds.test.ts
 - [x] Admin customer management API: list, segments, notes, order history, CSV export (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented in src/modules/store/customer-routes.ts (GET /api/v1/admin/store/customers, GET /export, GET /:id, PUT /:id/segment, POST /:id/notes) with order metrics, customer notes, VIP/wholesale segmentation, and CSV streaming, verified in tests/customer-accounts.test.ts
 - [~] Admin customer management UI - belongs to client repo
 - [x] Reviews and ratings with moderation (StoreService reviews, moderation workflow, tested in tests/store.test.ts)
 - [x] Wishlist API: add, remove, and list customer wishlist items (cms-core) - [2026-10-25 22:10 UTC+5:30] customer_wishlist table created via migration 0009_customer_accounts_h2_4 with add, remove, and list endpoints joining active product catalogs, verified in tests/customer-accounts.test.ts
 - [~] Wishlist storefront UI - belongs to client repo
-- [ ] Meta catalog product feed XML/CSV endpoint (cms-core)
+- [x] Meta catalog product feed XML/CSV endpoint (cms-core) - [2026-10-26 11:05 UTC+5:30] Implemented StoreService.generateMetaCatalogFeed with RSS 2.0 XML with Google Base namespace (<g:id>, <g:title>, <g:price>, <g:availability>) and Meta CSV catalog formats, public endpoints GET /api/v1/store/products/feed/meta.xml and GET /api/v1/store/products/feed/meta.csv, verified in tests/store-inventory-feeds.test.ts
 - [~] Meta catalog business manager setup - belongs to client repo
 
 ### Donation (if applicable)

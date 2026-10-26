@@ -1375,6 +1375,41 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0009_customer_accounts_h2_4 completed.');
+    }
+
+    // Check 0010_stock_movements_h2_6
+    const [rows10] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0010_stock_movements_h2_6']
+    );
+
+    if (rows10.length === 0) {
+      console.log('[Migration] Applying 0010_stock_movements_h2_6...');
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS stock_movements (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          product_id BIGINT UNSIGNED NOT NULL,
+          variant_id BIGINT UNSIGNED NULL,
+          quantity INT NOT NULL,
+          change_type VARCHAR(50) NOT NULL DEFAULT 'adjustment',
+          reason TEXT NULL,
+          reference_id VARCHAR(100) NULL,
+          actor_id BIGINT UNSIGNED NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_sm_product (product_id),
+          INDEX idx_sm_variant (variant_id),
+          INDEX idx_sm_created (created_at),
+          CONSTRAINT fk_sm_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0010_stock_movements_h2_6']
+      );
+
+      console.log('[Migration] 0010_stock_movements_h2_6 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }

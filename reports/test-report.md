@@ -4,16 +4,16 @@ Date: 2026-10-26
 Test Framework: Vitest 2.1.9
 Runtime: Node.js 22 LTS
 Target: cms-core Headless API Engine
-Status: PASS (223 passed, 0 failed)
+Status: PASS (233 passed, 0 failed)
 
 ## Summary
 
-- Total Test Suites: 24
-- Total Tests: 223
-- Passed: 223
+- Total Test Suites: 25
+- Total Tests: 233
+- Passed: 233
 - Failed: 0
 - Skipped: 0
-- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, and auth)
+- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, feeds, and auth)
 
 ## Test Suites Breakdown
 
@@ -172,4 +172,15 @@ Status: PASS (223 passed, 0 failed)
     - Email dispatch log inspection and message re-enqueueing
     - Automated email event triggers toggling and custom subject editing
     - Schema.org JSON-LD structured data generation for Organization, WebSite, NewsArticle, Product, and BreadcrumbList
+
+25. tests/store-inventory-feeds.test.ts (10 passed)
+    - Atomic manual stock adjustments with backorder zero-floor protection
+    - Inventory movement history ledger with product and staff user joins
+    - Product CSV export with spreadsheet formula injection defense
+    - Bulk product CSV import with RFC 4180 parsing, upsert logic, and stock delta tracking
+    - Meta Business Manager product catalog feed generation in RSS 2.0 XML and CSV formats
+    - Meta Conversions API (CAPI) SHA-256 PII hashing and server-side event dispatching
+    - Abandoned cart recovery job scanning pending orders and queueing emails
+    - Administrative RBAC permissions and 403 Forbidden enforcement on inventory endpoints
+
 

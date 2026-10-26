@@ -3,8 +3,8 @@
 Location: `cms-core/docs/ADMIN-UI-CONTRACT.md`
 
 ```
-Contract version:   0.2.5
-cms-core version:   0.2.5
+Contract version:   0.2.6
+cms-core version:   0.2.6
 Last updated:       2026-10-26
 ```
 
@@ -672,6 +672,48 @@ Storefront / Headless Consumer Endpoints:
 Output Format:      application/ld+json Schema.org compliant structured metadata graph
 ```
 
+### 5.30 Store: Inventory Stock History & Ledger (`STORE-08`)
+```
+Screen id:          STORE-08
+Route in GUI:       /admin/store/inventory
+Module:             store
+Permissions:        view = store.products.view, actions = store.products.edit
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/store/inventory/history
+  Query params:     productId, variantId, changeType (restock, adjustment, release, reservation, damaged, bulk_import), page, perPage
+  Row fields:       id, productId, productName, productSku, variantId, quantity, changeType, reason, referenceId, actorName, createdAt
+
+Actions:
+  Adjust Stock:     POST /api/v1/admin/store/inventory/adjust { productId, variantId, quantityDelta, changeType, reason } | store.products.edit | updates stock and creates ledger record
+```
+
+### 5.31 Store: Products Bulk CSV Import & Export (`STORE-09`)
+```
+Screen id:          STORE-09
+Route in GUI:       /admin/store/products
+Module:             store
+Permissions:        view = store.products.view, actions = store.products.edit
+
+Actions:
+  Export CSV:       GET /api/v1/admin/store/products/export | store.products.view | streams products.csv with formula-injection defenses
+  Bulk Import CSV:  POST /api/v1/admin/store/products/import { csv } | store.products.edit | parses rows, upserts products by SKU/slug, logs stock movements
+```
+
+### 5.32 Marketing: Meta Product Catalog Feeds & Conversions API (`FEED-01`)
+```
+Screen id:          FEED-01
+Module:             store
+Permissions:        public storefront feed endpoints
+
+Storefront Endpoints:
+  XML Catalog Feed: GET /api/v1/store/products/feed/meta.xml (Meta Business Manager RSS 2.0 schema)
+  CSV Catalog Feed: GET /api/v1/store/products/feed/meta.csv (Meta Business Manager CSV format)
+
+Conversions API:
+  Server-Side CAPI: MetaCapiService.dispatchEvent({ eventName: 'Purchase'|'InitiateCheckout'|'AddToCart', userData, customData }) with SHA-256 hashed customer PII
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -708,6 +750,7 @@ Output Format:      application/ld+json Schema.org compliant structured metadata
 | 0.2.3 | 0.2.3 | 2026-10-25 | H2.3D Digital Delivery: digital assets, license key pools, tokenized downloads, order entitlements, revocation on refund (in-api) |
 | 0.2.4 | 0.2.4 | 2026-10-25 | H2.4 Customer Accounts: customer profiles, saved addresses, wishlist, order history, return requests, DPDP export & deletion, admin management (in-api) |
 | 0.2.5 | 0.2.5 | 2026-10-26 | H2.5 Admin Operations: dashboard statistics, system & error logs, email logs/aliases/automation triggers, Schema.org JSON-LD generation (in-api) |
+| 0.2.6 | 0.2.6 | 2026-10-26 | H2.6 Ecommerce Operations: inventory stock history ledger, manual adjustments, bulk CSV product import/export, Meta catalog feeds, abandoned cart job, and Meta CAPI (in-api) |
 
 
 

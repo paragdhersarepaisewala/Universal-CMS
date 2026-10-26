@@ -9,6 +9,7 @@ import { fulfilmentRegistry } from './fulfilment.js';
 import { TaxEngine, QuoteCalculationResult } from './tax.js';
 import { InvoiceService } from './invoice.js';
 import { ShippingService } from '../shipping/service.js';
+import { cache } from '../../cache/index.js';
 
 export interface ProductRecord {
   id: number;
@@ -2111,4 +2112,526 @@ export class StoreService {
       connection.release();
     }
   }
+
+  // 24. Get Stock Movements Ledger
+  static async getStockMovements(options: {
+    productId?: number;
+    variantId?: number;
+    changeType?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<{
+    data: Array<{
+      id: number;
+      productId: number;
+      productName: string;
+      productSku: string | null;
+      variantId: number | null;
+      quantity: number;
+      changeType: string;
+      reason: string | null;
+      referenceId: string | null;
+      actorId: number | null;
+      actorName: string | null;
+      createdAt: string;
+    }>;
+    meta: { page: number; perPage: number; total: number };
+  }> {
+    const page = Math.max(1, options.page || 1);
+    const perPage = Math.min(100, Math.max(1, options.perPage || 20));
+    const offset = (page - 1) * perPage;
+
+    const whereClauses: string[] = ['1=1'];
+    const params: any[] = [];
+
+    if (options.productId) {
+      whereClauses.push('sm.product_id = ?');
+      params.push(options.productId);
+    }
+    if (options.variantId) {
+      whereClauses.push('sm.variant_id = ?');
+      params.push(options.variantId);
+    }
+    if (options.changeType) {
+      whereClauses.push('sm.change_type = ?');
+      params.push(options.changeType);
+    }
+
+    const whereSql = whereClauses.join(' AND ');
+
+    const [countRows] = await pool.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as total FROM stock_movements sm WHERE ${whereSql}`,
+      params
+    );
+    const total = Number(countRows[0]?.total || 0);
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT sm.id, sm.product_id, sm.variant_id, sm.quantity, sm.change_type,
+              sm.reason, sm.reference_id, sm.actor_id, sm.created_at,
+              p.name as product_name, p.sku as product_sku,
+              u.name as actor_name
+       FROM stock_movements sm
+       LEFT JOIN products p ON sm.product_id = p.id
+       LEFT JOIN users u ON sm.actor_id = u.id
+       WHERE ${whereSql}
+       ORDER BY sm.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, perPage, offset]
+    );
+
+    return {
+      data: rows.map(r => ({
+        id: Number(r.id),
+        productId: Number(r.product_id),
+        productName: r.product_name || 'Unknown Product',
+        productSku: r.product_sku || null,
+        variantId: r.variant_id ? Number(r.variant_id) : null,
+        quantity: Number(r.quantity),
+        changeType: r.change_type,
+        reason: r.reason || null,
+        referenceId: r.reference_id || null,
+        actorId: r.actor_id ? Number(r.actor_id) : null,
+        actorName: r.actor_name || null,
+        createdAt: r.created_at.toISOString ? r.created_at.toISOString() : String(r.created_at),
+      })),
+      meta: { page, perPage, total },
+    };
+  }
+
+  // 25. Manual Stock Adjustment with Ledger Logging
+  static async adjustStock(
+    productId: number,
+    variantId: number | null,
+    quantityDelta: number,
+    changeType: 'restock' | 'adjustment' | 'release' | 'reservation' | 'damaged' = 'adjustment',
+    reason: string = 'Manual stock adjustment',
+    actorId?: number | null
+  ): Promise<{ productId: number; newStockQuantity: number; stockMovementId: number }> {
+    if (!Number.isInteger(quantityDelta) || quantityDelta === 0) {
+      const err = new Error('quantityDelta must be a non-zero integer');
+      (err as any).code = 'INVALID_DELTA';
+      throw err;
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [prods] = await connection.query<RowDataPacket[]>(
+        'SELECT id, name, stock_quantity, allow_backorder FROM products WHERE id = ? FOR UPDATE',
+        [productId]
+      );
+      if (prods.length === 0) {
+        const err = new Error(`Product with ID ${productId} not found`);
+        (err as any).code = 'NOT_FOUND';
+        throw err;
+      }
+
+      const currentStock = Number(prods[0].stock_quantity);
+      const newStock = currentStock + quantityDelta;
+
+      if (newStock < 0 && !prods[0].allow_backorder) {
+        const err = new Error(`Stock cannot drop below zero for product '${prods[0].name}' (current: ${currentStock}, adjustment: ${quantityDelta})`);
+        (err as any).code = 'INSUFFICIENT_STOCK';
+        throw err;
+      }
+
+      await connection.query('UPDATE products SET stock_quantity = ? WHERE id = ?', [newStock, productId]);
+
+      const [smRes] = await connection.query<ResultSetHeader>(
+        `INSERT INTO stock_movements (product_id, variant_id, quantity, change_type, reason, actor_id)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [productId, variantId || null, quantityDelta, changeType, reason, actorId || null]
+      );
+
+      await connection.commit();
+      await cache.invalidateTags(['catalog', 'products']);
+
+      return {
+        productId,
+        newStockQuantity: newStock,
+        stockMovementId: smRes.insertId,
+      };
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+  }
+
+  // 26. Products CSV Export (with Formula Injection Defense)
+  static async exportProductsCsv(): Promise<string> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT sku, name, slug, description, price, compare_at_price, cost_price,
+              product_type, stock_quantity, low_stock_threshold, track_stock,
+              allow_backorder, status, hsn_code, weight_grams
+       FROM products
+       ORDER BY id ASC`
+    );
+
+    const headers = [
+      'sku',
+      'name',
+      'slug',
+      'description',
+      'price_paise',
+      'compare_at_price_paise',
+      'cost_price_paise',
+      'product_type',
+      'stock_quantity',
+      'low_stock_threshold',
+      'track_stock',
+      'allow_backorder',
+      'status',
+      'hsn_code',
+      'weight_grams',
+    ];
+
+    const lines = [headers.join(',')];
+    for (const r of rows) {
+      const line = [
+        escapeCsvCell(r.sku || ''),
+        escapeCsvCell(r.name),
+        escapeCsvCell(r.slug),
+        escapeCsvCell(r.description || ''),
+        Number(r.price),
+        r.compare_at_price !== null && r.compare_at_price !== undefined ? Number(r.compare_at_price) : '',
+        r.cost_price !== null && r.cost_price !== undefined ? Number(r.cost_price) : '',
+        escapeCsvCell(r.product_type),
+        Number(r.stock_quantity),
+        Number(r.low_stock_threshold),
+        r.track_stock ? 1 : 0,
+        r.allow_backorder ? 1 : 0,
+        escapeCsvCell(r.status),
+        escapeCsvCell(r.hsn_code || ''),
+        Number(r.weight_grams || 500),
+      ];
+      lines.push(line.join(','));
+    }
+
+    return lines.join('\n');
+  }
+
+  // 27. Products CSV Bulk Import (with Validation & Stock Movement Tracking)
+  static async importProductsCsv(csvContent: string, actorId?: number | null): Promise<{
+    totalRows: number;
+    created: number;
+    updated: number;
+    errors: Array<{ row: number; error: string }>;
+  }> {
+    const rows = parseCsvText(csvContent);
+    if (rows.length < 2) {
+      return { totalRows: 0, created: 0, updated: 0, errors: [{ row: 1, error: 'CSV file is empty or missing headers' }] };
+    }
+
+    const header = rows[0].map(h => h.toLowerCase().trim());
+    const skuIdx = header.indexOf('sku');
+    const nameIdx = header.indexOf('name');
+    const slugIdx = header.indexOf('slug');
+    const priceIdx = header.indexOf('price_paise') !== -1 ? header.indexOf('price_paise') : header.indexOf('price');
+    const stockIdx = header.indexOf('stock_quantity') !== -1 ? header.indexOf('stock_quantity') : header.indexOf('stock');
+    const descIdx = header.indexOf('description');
+    const statusIdx = header.indexOf('status');
+    const hsnIdx = header.indexOf('hsn_code');
+    const weightIdx = header.indexOf('weight_grams');
+
+    if (nameIdx === -1 || priceIdx === -1) {
+      return { totalRows: rows.length - 1, created: 0, updated: 0, errors: [{ row: 1, error: "Missing required columns: 'name' and 'price_paise'" }] };
+    }
+
+    let created = 0;
+    let updated = 0;
+    const errors: Array<{ row: number; error: string }> = [];
+
+    const connection = await pool.getConnection();
+    try {
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length === 0 || (row.length === 1 && !row[0])) continue;
+
+        const rowNum = i + 1;
+        const name = row[nameIdx]?.trim();
+        const priceRaw = row[priceIdx]?.trim();
+
+        if (!name) {
+          errors.push({ row: rowNum, error: 'Name is required' });
+          continue;
+        }
+
+        const price = parseInt(priceRaw, 10);
+        if (isNaN(price) || price < 0) {
+          errors.push({ row: rowNum, error: `Invalid price '${priceRaw}' (must be non-negative integer paise)` });
+          continue;
+        }
+
+        const sku = skuIdx !== -1 && row[skuIdx] ? row[skuIdx].trim() : null;
+        const slug = slugIdx !== -1 && row[slugIdx] ? row[slugIdx].trim() : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const desc = descIdx !== -1 ? row[descIdx] : null;
+        const status = statusIdx !== -1 && ['active', 'draft', 'archived'].includes(row[statusIdx]?.trim()) ? row[statusIdx].trim() : 'active';
+        const stock = stockIdx !== -1 && row[stockIdx] ? parseInt(row[stockIdx].trim(), 10) : 0;
+        const stockQuantity = isNaN(stock) ? 0 : Math.max(0, stock);
+        const hsn = hsnIdx !== -1 ? row[hsnIdx] : null;
+        const weight = weightIdx !== -1 && row[weightIdx] ? parseInt(row[weightIdx].trim(), 10) : 500;
+
+        try {
+          await connection.beginTransaction();
+
+          let existingId: number | null = null;
+          let oldStock = 0;
+
+          if (sku) {
+            const [bySku] = await connection.query<RowDataPacket[]>(
+              'SELECT id, stock_quantity FROM products WHERE sku = ? FOR UPDATE',
+              [sku]
+            );
+            if (bySku.length > 0) {
+              existingId = Number(bySku[0].id);
+              oldStock = Number(bySku[0].stock_quantity);
+            }
+          }
+
+          if (!existingId && slug) {
+            const [bySlug] = await connection.query<RowDataPacket[]>(
+              'SELECT id, stock_quantity FROM products WHERE slug = ? FOR UPDATE',
+              [slug]
+            );
+            if (bySlug.length > 0) {
+              existingId = Number(bySlug[0].id);
+              oldStock = Number(bySlug[0].stock_quantity);
+            }
+          }
+
+          if (existingId) {
+            await connection.query(
+              `UPDATE products SET
+                 name = ?, description = COALESCE(?, description),
+                 price = ?, stock_quantity = ?, status = ?,
+                 hsn_code = COALESCE(?, hsn_code), weight_grams = ?
+               WHERE id = ?`,
+              [name, desc, price, stockQuantity, status, hsn, isNaN(weight) ? 500 : weight, existingId]
+            );
+
+            const stockDelta = stockQuantity - oldStock;
+            if (stockDelta !== 0) {
+              await connection.query(
+                `INSERT INTO stock_movements (product_id, quantity, change_type, reason, actor_id)
+                 VALUES (?, ?, 'bulk_import', 'Bulk CSV import update', ?)`,
+                [existingId, stockDelta, actorId || null]
+              );
+            }
+            updated++;
+          } else {
+            const [insRes] = await connection.query<ResultSetHeader>(
+              `INSERT INTO products (
+                 name, slug, description, sku, price, stock_quantity,
+                 product_type, status, hsn_code, weight_grams, track_stock
+               ) VALUES (?, ?, ?, ?, ?, ?, 'physical', ?, ?, ?, TRUE)`,
+              [name, slug, desc, sku, price, stockQuantity, status, hsn, isNaN(weight) ? 500 : weight]
+            );
+
+            if (stockQuantity > 0) {
+              await connection.query(
+                `INSERT INTO stock_movements (product_id, quantity, change_type, reason, actor_id)
+                 VALUES (?, ?, 'bulk_import', 'Initial stock from bulk CSV import', ?)`,
+                [insRes.insertId, stockQuantity, actorId || null]
+              );
+            }
+            created++;
+          }
+
+          await connection.commit();
+        } catch (rowErr: any) {
+          await connection.rollback();
+          errors.push({ row: rowNum, error: rowErr.message });
+        }
+      }
+    } finally {
+      connection.release();
+    }
+
+    await cache.invalidateTags(['catalog', 'products']);
+    return {
+      totalRows: rows.length - 1,
+      created,
+      updated,
+      errors,
+    };
+  }
+
+  // 28. Generate Meta / Facebook Catalog Product Feed (XML or CSV)
+  static async generateMetaCatalogFeed(format: 'xml' | 'csv' = 'xml', baseUrl: string = 'http://localhost:3000'): Promise<string> {
+    const { data: prods } = await this.listProducts({ status: 'active', page: 1, perPage: 1000 });
+    const { SettingsService } = await import('../../content/settings.js');
+    const siteSettings = await SettingsService.getSettings();
+
+    if (format === 'csv') {
+      const headers = ['id', 'title', 'description', 'availability', 'condition', 'price', 'link', 'image_link', 'brand'];
+      const lines = [headers.join(',')];
+
+      for (const p of prods) {
+        const line = [
+          escapeCsvCell(p.sku || p.id),
+          escapeCsvCell(p.name),
+          escapeCsvCell(p.description || p.name),
+          p.stockQuantity > 0 ? 'in stock' : 'out of stock',
+          'new',
+          `${(p.price / 100).toFixed(2)} ${siteSettings.currency || 'INR'}`,
+          escapeCsvCell(`${baseUrl}/store/products/${p.slug}`),
+          escapeCsvCell(`${baseUrl}/api/v1/media/${p.featuredImageId || 1}`),
+          escapeCsvCell(siteSettings.siteName || 'Store'),
+        ];
+        lines.push(line.join(','));
+      }
+      return lines.join('\n');
+    }
+
+    const items = prods.map(p => `
+    <item>
+      <g:id>${p.sku || p.id}</g:id>
+      <g:title><![CDATA[${p.name}]]></g:title>
+      <g:description><![CDATA[${p.description || p.name}]]></g:description>
+      <g:link>${baseUrl}/store/products/${p.slug}</g:link>
+      <g:image_link>${baseUrl}/api/v1/media/${p.featuredImageId || 1}</g:image_link>
+      <g:brand><![CDATA[${siteSettings.siteName || 'Store'}]]></g:brand>
+      <g:condition>new</g:condition>
+      <g:availability>${p.stockQuantity > 0 ? 'in stock' : 'out of stock'}</g:availability>
+      <g:price>${(p.price / 100).toFixed(2)} ${siteSettings.currency || 'INR'}</g:price>
+    </item>`).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>${siteSettings.siteName} Product Catalog</title>
+    <link>${baseUrl}/store/products</link>
+    <description>${siteSettings.siteDescription || 'Meta Catalog Product Feed'}</description>
+    ${items}
+  </channel>
+</rss>`;
+  }
+
+  // 29. Detect and Process Abandoned Carts
+  static async processAbandonedCarts(thresholdMinutes: number = 60): Promise<{ processed: number; emailed: number }> {
+    const connection = await pool.getConnection();
+    let processed = 0;
+    let emailed = 0;
+
+    try {
+      const [orders] = await connection.query<RowDataPacket[]>(
+        `SELECT o.id, o.order_number, o.customer_email, o.customer_name, o.total, o.currency, o.created_at
+         FROM orders o
+         WHERE o.status = 'pending_payment'
+           AND o.created_at <= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+           AND o.created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)
+           AND NOT EXISTS (
+             SELECT 1 FROM order_notes n 
+             WHERE n.order_id = o.id AND n.note LIKE '%Abandoned cart recovery email%'
+           )
+         LIMIT 50`,
+        [thresholdMinutes]
+      );
+
+      for (const order of orders) {
+        processed++;
+        try {
+          const { EmailService } = await import('../../email/service.js');
+          const settings = await EmailService.getAutomationSettings();
+          const isEnabled = settings.find(s => s.key === 'abandoned_cart')?.isEnabled !== false;
+
+          if (isEnabled && order.customer_email) {
+            await EmailService.enqueueEmail({
+              to: order.customer_email,
+              templateKey: 'abandoned_cart',
+              context: {
+                customer_name: order.customer_name || 'Customer',
+                order_number: order.order_number,
+                total_amount: (Number(order.total) / 100).toFixed(2),
+                currency: order.currency || 'INR',
+                checkout_url: `http://localhost:3000/checkout?orderId=${order.id}`,
+              },
+            });
+            emailed++;
+          }
+
+          await connection.query(
+            `INSERT INTO order_notes (order_id, is_customer_visible, note)
+             VALUES (?, FALSE, 'Abandoned cart recovery email queued/sent')`,
+            [order.id]
+          );
+        } catch {
+          // Continue processing other orders
+        }
+      }
+    } finally {
+      connection.release();
+    }
+
+    return { processed, emailed };
+  }
 }
+
+function escapeCsvCell(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  let str = String(val);
+  // Formula injection defense: prefix dangerous leading characters with single quote
+  if (/^[=\+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function parseCsvText(text: string): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (insideQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          currentField += '"';
+          i++;
+        } else {
+          insideQuotes = false;
+        }
+      } else {
+        currentField += char;
+      }
+    } else {
+      if (char === '"') {
+        insideQuotes = true;
+      } else if (char === ',') {
+        currentRow.push(currentField.trim());
+        currentField = '';
+      } else if (char === '\r') {
+        // ignore
+      } else if (char === '\n') {
+        currentRow.push(currentField.trim());
+        if (currentRow.some(f => f.length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+  }
+
+  if (currentField.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    if (currentRow.some(f => f.length > 0)) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+}
+

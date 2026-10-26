@@ -566,6 +566,43 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }
   );
 
+  // 17. GET /store/products/feed/meta.xml - Meta (Facebook) Catalog XML Feed
+  fastify.get(
+    '/products/feed/meta.xml',
+    {
+      preHandler: [requireModule('store')],
+      schema: {
+        description: 'Generate Meta Business Manager compliant product catalog XML feed',
+        tags: ['Store'],
+      },
+    },
+    async (req, reply) => {
+      const baseUrl = `${req.protocol}://${req.hostname}`;
+      const xml = await StoreService.generateMetaCatalogFeed('xml', baseUrl);
+      return reply.header('Content-Type', 'application/xml').send(xml);
+    }
+  );
+
+  // 18. GET /store/products/feed/meta.csv - Meta (Facebook) Catalog CSV Feed
+  fastify.get(
+    '/products/feed/meta.csv',
+    {
+      preHandler: [requireModule('store')],
+      schema: {
+        description: 'Generate Meta Business Manager compliant product catalog CSV feed',
+        tags: ['Store'],
+      },
+    },
+    async (req, reply) => {
+      const baseUrl = `${req.protocol}://${req.hostname}`;
+      const csv = await StoreService.generateMetaCatalogFeed('csv', baseUrl);
+      return reply
+        .header('Content-Type', 'text/csv')
+        .header('Content-Disposition', 'attachment; filename="meta-catalog.csv"')
+        .send(csv);
+    }
+  );
+
   // Customer account & profile storefront routes
   await fastify.register(customerStorefrontRoutes, { prefix: '/customer' });
 };
@@ -595,6 +632,144 @@ export const adminStoreRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
         perPage,
       });
       return reply.send({ data: res.data, meta: { total: res.total, page, perPage } });
+    }
+  );
+
+  // Admin export products CSV
+  fastify.get(
+    '/products/export',
+    {
+      preHandler: [authenticate, requirePermission('store.products.view')],
+      schema: {
+        description: 'Export all products to a CSV file with formula-injection defenses',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (_req, reply) => {
+      const csv = await StoreService.exportProductsCsv();
+      return reply
+        .header('Content-Type', 'text/csv')
+        .header('Content-Disposition', 'attachment; filename="products.csv"')
+        .send(csv);
+    }
+  );
+
+  // Admin import products CSV
+  fastify.post(
+    '/products/import',
+    {
+      preHandler: [authenticate, requirePermission('store.products.edit')],
+      schema: {
+        description: 'Bulk import products via CSV content with atomic stock adjustment tracking',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          csv: Type.String({ minLength: 1 }),
+        }),
+        response: {
+          200: Type.Object({
+            data: Type.Object({
+              totalRows: Type.Number(),
+              created: Type.Number(),
+              updated: Type.Number(),
+              errors: Type.Array(
+                Type.Object({
+                  row: Type.Number(),
+                  error: Type.String(),
+                })
+              ),
+            }),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const body = req.body as { csv: string };
+      const user = (req as any).user;
+      const res = await StoreService.importProductsCsv(body.csv, user?.id || null);
+      return reply.send({ data: res });
+    }
+  );
+
+  // Admin get stock movements ledger
+  fastify.get(
+    '/inventory/history',
+    {
+      preHandler: [authenticate, requirePermission('store.products.view')],
+      schema: {
+        description: 'Retrieve paginated stock movement audit ledger for inventory tracking',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        querystring: Type.Object({
+          productId: Type.Optional(Type.Number()),
+          variantId: Type.Optional(Type.Number()),
+          changeType: Type.Optional(Type.String()),
+          page: Type.Optional(Type.Number()),
+          perPage: Type.Optional(Type.Number()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const q = req.query as { productId?: number; variantId?: number; changeType?: string; page?: number; perPage?: number };
+      const res = await StoreService.getStockMovements(q);
+      return reply.send(res);
+    }
+  );
+
+  // Admin manual stock adjustment
+  fastify.post(
+    '/inventory/adjust',
+    {
+      preHandler: [authenticate, requirePermission('store.products.edit')],
+      schema: {
+        description: 'Manually adjust inventory stock quantity with required reason string and ledger logging',
+        tags: ['Admin Store'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          productId: Type.Number(),
+          variantId: Type.Optional(Type.Number()),
+          quantityDelta: Type.Number(),
+          changeType: Type.Optional(
+            Type.Union([
+              Type.Literal('restock'),
+              Type.Literal('adjustment'),
+              Type.Literal('release'),
+              Type.Literal('reservation'),
+              Type.Literal('damaged'),
+            ])
+          ),
+          reason: Type.String({ minLength: 3 }),
+        }),
+        response: {
+          200: Type.Object({
+            data: Type.Object({
+              productId: Type.Number(),
+              newStockQuantity: Type.Number(),
+              stockMovementId: Type.Number(),
+            }),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const body = req.body as {
+        productId: number;
+        variantId?: number;
+        quantityDelta: number;
+        changeType?: 'restock' | 'adjustment' | 'release' | 'reservation' | 'damaged';
+        reason: string;
+      };
+      const user = (req as any).user;
+      const res = await StoreService.adjustStock(
+        body.productId,
+        body.variantId || null,
+        body.quantityDelta,
+        body.changeType || 'adjustment',
+        body.reason,
+        user?.id || null
+      );
+      return reply.send({ data: res });
     }
   );
 
@@ -1280,7 +1455,7 @@ export const adminStoreRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
 
 export const storeModuleManifest: ModuleManifest = {
   name: 'store',
-  version: '0.2.4',
+  version: '0.2.6',
   description: 'Ecommerce catalog, inventory, cart, checkout, payments, taxes, invoices, orders, customers, and wishlist',
   isCore: false,
   dependsOn: ['media'],
@@ -1330,6 +1505,13 @@ export const storeModuleManifest: ModuleManifest = {
       route: '/admin/store/settings/tax-cod',
       permission: 'store.tax.manage',
       order: 34,
+    },
+    {
+      id: 'store-inventory',
+      label: 'Inventory',
+      route: '/admin/store/inventory',
+      permission: 'store.products.view',
+      order: 35,
     },
   ],
   routesPrefix: '/store',

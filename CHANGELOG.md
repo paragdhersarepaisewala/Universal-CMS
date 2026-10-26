@@ -240,5 +240,31 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI Contract specs `DASH-01`, `LOGS-01`, and `SEO-02` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.5`).
   - Integration test suite in `tests/dashboard-logs-seo.test.ts` (11 real MySQL tests covering dashboard stats, system logs, error logs, email logs, automation triggers, and JSON-LD schema generation for Organization, WebSite, Product, Article, and BreadcrumbList).
 
+## [0.2.6] - 2026-10-26T11:10:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.6 (Store Inventory Movements, Bulk CSV Import/Export, Meta Catalog Feeds, Abandoned Carts, and Meta Conversions API):
+  - Database schema additions via migration `0010_stock_movements_h2_6`:
+    - Table: `stock_movements` with columns `product_id`, `variant_id`, `quantity`, `change_type`, `reason`, `reference_id`, `actor_id`, and `created_at`, with foreign keys and indexes.
+  - Inventory Stock History & Manual Adjustment Engine (`src/modules/store/service.ts`):
+    - `adjustStock`: transactional stock updates with strict non-zero integer delta validation, backorder checks, zero-floor protection when backorders are disallowed, and atomic insert into `stock_movements`.
+    - `getStockMovements`: paginated inventory movement history ledger joined with product name, SKU, and staff user records, filterable by `productId`, `variantId`, and `changeType`.
+    - Admin endpoints: `POST /api/v1/admin/store/inventory/adjust` and `GET /api/v1/admin/store/inventory/history`.
+  - Bulk Product CSV Import and Export (`src/modules/store/service.ts`):
+    - `exportProductsCsv`: complete catalog CSV export with formula injection defense (prefixing dangerous formula triggers `=`, `+`, `-`, `@`, `\t`, `\r` with a single quote).
+    - `importProductsCsv`: streaming CSV parser adhering to RFC 4180 rules, row-level validation, atomic per-row transactions, SKU/slug matching, stock quantity differential tracking logged to `stock_movements`, and aggregated error reporting.
+    - Admin endpoints: `GET /api/v1/admin/store/products/export` and `POST /api/v1/admin/store/products/import`.
+  - Meta Product Catalog Feeds (`src/modules/store/service.ts`, `src/modules/store/index.ts`):
+    - `generateMetaCatalogFeed`: generates Meta Business Manager compliant product feeds in RSS 2.0 XML with Google Base (`g:`) namespace tags and CSV format.
+    - Public storefront endpoints: `GET /api/v1/store/products/feed/meta.xml` and `GET /api/v1/store/products/feed/meta.csv`.
+  - Meta Conversions API (CAPI) Dispatcher (`src/modules/store/meta-capi.ts`):
+    - `MetaCapiService`: server-side event dispatcher constructing Meta Graph API v18.0 payloads with normalized SHA-256 PII hashing for email and phone.
+    - Safe dry-run mode when `META_PIXEL_ID` or `META_CAPI_ACCESS_TOKEN` are not configured.
+  - Abandoned Cart Detection Job (`src/modules/store/service.ts`, `src/routes/jobs.ts`):
+    - `processAbandonedCarts`: scans orders in `pending_payment` older than configurable threshold (default 60 minutes), respects per-event automation switch for `abandoned_cart`, enqueues email via `EmailService.enqueueEmail`, and deduplicates with internal staff order notes.
+    - Integrated directly into the background job runner `POST /api/v1/jobs/process`.
+  - Admin UI Contract specs `STORE-08`, `STORE-09`, and `FEED-01` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.6`).
+  - Integration test suite in `tests/store-inventory-feeds.test.ts` (10 real MySQL tests covering stock adjustment, backorder protection, inventory ledger, CSV export/import formula defense, Meta XML/CSV feeds, Meta CAPI SHA-256 hashing, abandoned cart job execution, and RBAC 403 enforcement).
+
 
 

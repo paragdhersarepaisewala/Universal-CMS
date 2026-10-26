@@ -19,6 +19,7 @@ export const jobsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
             data: Type.Object({
               emailsProcessed: Type.Number(),
               ordersExpired: Type.Number(),
+              abandonedCartsProcessed: Type.Optional(Type.Number()),
               jobsCompleted: Type.Number(),
             }),
           }),
@@ -50,13 +51,21 @@ export const jobsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         request.log.error(err, '[Jobs] Failed processing email queue');
       }
 
-      // 2. Expire unpaid online orders (if store module is registered & enabled)
+      // 2. Expire unpaid online orders and process abandoned carts (if store module is registered & enabled)
+      let abandonedCartsProcessed = 0;
       if (moduleRegistry.isEnabled('store')) {
         try {
           const expRes = await StoreService.expireUnpaidOrders();
           ordersExpired = expRes.expiredCount;
         } catch (err) {
           request.log.error(err, '[Jobs] Failed expiring unpaid orders');
+        }
+
+        try {
+          const abRes = await StoreService.processAbandonedCarts(60);
+          abandonedCartsProcessed = abRes.processed;
+        } catch (err) {
+          request.log.error(err, '[Jobs] Failed processing abandoned carts');
         }
       }
 
@@ -83,6 +92,7 @@ export const jobsRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         data: {
           emailsProcessed,
           ordersExpired,
+          abandonedCartsProcessed,
           jobsCompleted,
         },
       });
