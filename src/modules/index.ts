@@ -11,6 +11,7 @@ export function initializeModules(): void {
   moduleRegistry.registerManifest(shippingModuleManifest);
   moduleRegistry.registerManifest(digitalModuleManifest);
   moduleRegistry.registerManifest(donationModuleManifest);
+  moduleRegistry.setModuleState('blog', true);
   moduleRegistry.setModuleState('store', true);
   moduleRegistry.setModuleState('shipping', true);
   moduleRegistry.setModuleState('digital-delivery', true);

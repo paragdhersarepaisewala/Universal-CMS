@@ -197,11 +197,13 @@ export class FakePaymentGateway implements PaymentGateway {
   async fetchPayment(paymentId: string): Promise<GatewayPaymentDetails> {
     const payment = this.payments.get(paymentId);
     if (!payment) {
-      // Default auto-captured payment for tests
+      // If paymentId contains encoded amount (e.g., pay_amt12345_xxx)
+      const amtMatch = paymentId.match(/amt(\d+)/);
+      const autoAmount = amtMatch ? parseInt(amtMatch[1], 10) : 0;
       return {
         id: paymentId,
         orderId: 'order_test',
-        amount: 0,
+        amount: autoAmount,
         currency: 'INR',
         status: 'captured',
         method: 'card',

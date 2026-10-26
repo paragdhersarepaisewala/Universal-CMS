@@ -205,6 +205,7 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         return reply.status(201).send({
           data: {
+            id: result.order.id,
             orderNumber: result.order.orderNumber,
             total: result.order.total,
             paymentMethod: result.order.paymentMethod,
@@ -335,18 +336,22 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       schema: {
         description: 'Get order details with customer ownership validation',
         tags: ['Store'],
-        params: Type.Object({ id: Type.Number() }),
+        params: Type.Object({ id: Type.Union([Type.Number(), Type.String()]) }),
         querystring: Type.Object({ guestToken: Type.Optional(Type.String()) }),
       },
     },
     async (req, reply) => {
-      const { id } = req.params as { id: number };
+      const { id } = req.params as { id: number | string };
       const { guestToken } = req.query as { guestToken?: string };
       const headerToken = req.headers['x-guest-token'] as string;
       const effectiveToken = guestToken || headerToken;
       const user = (req as any).user;
 
-      const order = await StoreService.getOrderById(id);
+      const numId = Number(id);
+      const order = !isNaN(numId)
+        ? await StoreService.getOrderById(numId)
+        : await StoreService.getOrderByNumber(String(id));
+
       if (!order) {
         return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Order not found' } });
       }
@@ -357,7 +362,7 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         user?.roleName === 'owner';
 
       if (!isOwner) {
-        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, id)) {
+        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, order.id)) {
           return reply.status(403).send({
             error: {
               code: 'FORBIDDEN',
@@ -379,18 +384,22 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       schema: {
         description: 'Get formal GST tax invoice or bill of supply for an order',
         tags: ['Store'],
-        params: Type.Object({ id: Type.Number() }),
+        params: Type.Object({ id: Type.Union([Type.Number(), Type.String()]) }),
         querystring: Type.Object({ guestToken: Type.Optional(Type.String()) }),
       },
     },
     async (req, reply) => {
-      const { id } = req.params as { id: number };
+      const { id } = req.params as { id: number | string };
       const { guestToken } = req.query as { guestToken?: string };
       const headerToken = req.headers['x-guest-token'] as string;
       const effectiveToken = guestToken || headerToken;
       const user = (req as any).user;
 
-      const order = await StoreService.getOrderById(id);
+      const numId = Number(id);
+      const order = !isNaN(numId)
+        ? await StoreService.getOrderById(numId)
+        : await StoreService.getOrderByNumber(String(id));
+
       if (!order) {
         return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Order not found' } });
       }
@@ -401,7 +410,7 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         user?.roleName === 'owner';
 
       if (!isOwner) {
-        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, id)) {
+        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, order.id)) {
           return reply.status(403).send({
             error: {
               code: 'FORBIDDEN',
@@ -411,7 +420,7 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         }
       }
 
-      const invoice = await InvoiceService.getInvoiceByOrderId(id);
+      const invoice = await InvoiceService.getInvoiceByOrderId(order.id);
       if (!invoice) {
         return reply.status(404).send({
           error: {
@@ -433,18 +442,22 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       schema: {
         description: 'Download printable PDF of a GST tax invoice or bill of supply',
         tags: ['Store'],
-        params: Type.Object({ id: Type.Number() }),
+        params: Type.Object({ id: Type.Union([Type.Number(), Type.String()]) }),
         querystring: Type.Object({ guestToken: Type.Optional(Type.String()) }),
       },
     },
     async (req, reply) => {
-      const { id } = req.params as { id: number };
+      const { id } = req.params as { id: number | string };
       const { guestToken } = req.query as { guestToken?: string };
       const headerToken = req.headers['x-guest-token'] as string;
       const effectiveToken = guestToken || headerToken;
       const user = (req as any).user;
 
-      const order = await StoreService.getOrderById(id);
+      const numId = Number(id);
+      const order = !isNaN(numId)
+        ? await StoreService.getOrderById(numId)
+        : await StoreService.getOrderByNumber(String(id));
+
       if (!order) {
         return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Order not found' } });
       }
@@ -455,7 +468,7 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         user?.roleName === 'owner';
 
       if (!isOwner) {
-        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, id)) {
+        if (!effectiveToken || !StoreService.verifyGuestAccessToken(effectiveToken, order.id)) {
           return reply.status(403).send({
             error: {
               code: 'FORBIDDEN',
@@ -465,7 +478,7 @@ const storeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         }
       }
 
-      const invoice = await InvoiceService.getInvoiceByOrderId(id);
+      const invoice = await InvoiceService.getInvoiceByOrderId(order.id);
       if (!invoice) {
         return reply.status(404).send({
           error: {

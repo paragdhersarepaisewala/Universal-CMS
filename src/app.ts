@@ -36,10 +36,17 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
     global: true,
   });
 
-  // Rate limiting (100 req/min default, high limit for tests)
+  // Rate limiting (configurable, high limit in development & testing)
   app.register(rateLimit, {
-    max: process.env.NODE_ENV === 'test' ? 10000 : 100,
+    max: Number(process.env.RATE_LIMIT_MAX || (process.env.NODE_ENV === 'production' ? 100 : 10000)),
     timeWindow: '1 minute',
+    errorResponseBuilder: (_req, context) => ({
+      statusCode: 429,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: `Rate limit exceeded, retry in ${context.after}`,
+      },
+    }),
   });
 
   // Raw body capture for webhook signature verification
