@@ -109,9 +109,9 @@ Status Legend:
 
 ### News portal (if applicable)
 - [x] Articles with drafts, revisions, scheduling, breaking and featured flags (BlogService with draft/published/scheduled/archived statuses, version revisions, isBreaking and isFeatured flags, tested in tests/blog.test.ts and tests/news-portal.test.ts)
-- [ ] Author profile API with published articles list (cms-core)
+- [x] Author profile API with published articles list (cms-core) - [2026-10-26 11:50 UTC+5:30] Implemented author_profiles table (migration 0012) and endpoints GET /api/v1/blog/authors, GET /api/v1/blog/authors/:slug, GET /api/v1/blog/authors/:slug/posts, GET /api/v1/admin/blog/authors, and PUT /api/v1/admin/blog/authors/:userId with published article count calculation, designations, and social links, verified in tests/news-editorial.test.ts
 - [~] Author profile frontend pages - belongs to client repo
-- [ ] Multi-stage editorial workflow state machine (roles and permissions mapped; formal submission/approval/publish state transitions pending)
+- [x] Multi-stage editorial workflow state machine (cms-core) - [2026-10-26 11:50 UTC+5:30] Implemented blog_editorial_history table (migration 0012), strict state machine transition validation (draft -> in_review -> changes_requested/approved -> published/scheduled -> archived), reviewer notes capture, and audit endpoints POST /api/v1/admin/blog/posts/:id/transition and GET /api/v1/admin/blog/posts/:id/history guarded by blog.editorial.review, verified in tests/news-editorial.test.ts
 - [x] RSS feeds and news sitemap (GET /api/v1/blog/rss.xml and GET /api/v1/blog/news-sitemap.xml with Google News schema, tested in tests/news-portal.test.ts)
 - [x] Ad slot management (GET /api/v1/ad-slots/:location, GET and PUT /api/v1/admin/ad-slots/:location, tested in tests/news-portal.test.ts)
 - [x] Related articles and site search (GET /api/v1/blog/posts/:slug/related and GET /api/v1/blog/posts?q=... search query param, tested in tests/news-portal.test.ts)

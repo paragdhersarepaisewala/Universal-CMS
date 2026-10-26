@@ -4,16 +4,16 @@ Date: 2026-10-26
 Test Framework: Vitest 2.1.9
 Runtime: Node.js 22 LTS
 Target: cms-core Headless API Engine
-Status: PASS (242 passed, 0 failed)
+Status: PASS (257 passed, 0 failed)
 
 ## Summary
 
-- Total Test Suites: 26
-- Total Tests: 242
-- Passed: 242
+- Total Test Suites: 27
+- Total Tests: 257
+- Passed: 257
 - Failed: 0
 - Skipped: 0
-- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, feeds, recurring donations, and auth)
+- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, feeds, recurring donations, author profiles, editorial workflow, and auth)
 
 ## Test Suites Breakdown
 
@@ -192,6 +192,16 @@ Status: PASS (242 passed, 0 failed)
     - Authenticated donor recurring subscription listing and self-cancellation
     - Admin recurring subscriptions directory and manual cancellation
     - Strict RBAC ownership and 403 Forbidden enforcement on subscription operations
+
+27. tests/news-editorial.test.ts (15 passed)
+    - Public authors directory resolution with published article counts (/api/v1/blog/authors)
+    - Single public author profile lookup by slug (/api/v1/blog/authors/:slug)
+    - Paginated author published articles listing (/api/v1/blog/authors/:slug/posts)
+    - Admin author profiles directory and metadata upsert (/api/v1/admin/blog/authors/:userId)
+    - Multi-stage editorial workflow state machine (draft -> in_review -> changes_requested -> in_review -> approved -> published)
+    - Prevention of invalid state skips with HTTP 400 and allowable transition hints
+    - Reviewer notes logging and transition audit trail (/api/v1/admin/blog/posts/:id/history)
+    - Authentication and RBAC boundary enforcement on editorial transitions and author management
 
 
 

@@ -1473,6 +1473,53 @@
         }
       }
     },
+    "/jobs/process": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "description": "Process queued background tasks (emails, order expiry, webhooks)",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "emailsProcessed": {
+                          "type": "number"
+                        },
+                        "ordersExpired": {
+                          "type": "number"
+                        },
+                        "abandonedCartsProcessed": {
+                          "type": "number"
+                        },
+                        "jobsCompleted": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "emailsProcessed",
+                        "ordersExpired",
+                        "jobsCompleted"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/theme": {
       "get": {
         "tags": [
@@ -2201,6 +2248,146 @@
             },
             "in": "path",
             "name": "entityId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/seo/jsonld/{type}": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "description": "Generate Schema.org JSON-LD structured data for organization, website, breadcrumb, etc.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "idOrSlug",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "baseUrl",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "organization"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "website"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "article"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "product"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "breadcrumb"
+                  ]
+                }
+              ]
+            },
+            "in": "path",
+            "name": "type",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/seo/jsonld/{type}/{idOrSlug}": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "description": "Generate Schema.org JSON-LD structured data for a specific article or product",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "baseUrl",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "organization"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "website"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "article"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "product"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "breadcrumb"
+                  ]
+                }
+              ]
+            },
+            "in": "path",
+            "name": "type",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "idOrSlug",
             "required": true
           }
         ],
@@ -4102,7 +4289,212 @@
         }
       }
     },
+    "/admin/email/logs": {
+      "get": {
+        "tags": [
+          "Admin Email"
+        ],
+        "description": "View paginated email dispatch history and status logs",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "per_page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "number"
+                          },
+                          "templateId": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "recipient": {
+                            "type": "string"
+                          },
+                          "subject": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "errorMessage": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "attempts": {
+                            "type": "number"
+                          },
+                          "sentAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "templateId",
+                          "recipient",
+                          "subject",
+                          "status",
+                          "errorMessage",
+                          "attempts",
+                          "sentAt",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "number"
+                        },
+                        "per_page": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "total_pages": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "per_page",
+                        "total",
+                        "total_pages"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/email/log/{id}/resend": {
+      "post": {
+        "tags": [
+          "Admin Email"
+        ],
+        "description": "Re-enqueue a failed or previously sent email",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "success",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/email/logs/{id}/resend": {
       "post": {
         "tags": [
           "Admin Email"
@@ -8410,6 +8802,89 @@
         }
       }
     },
+    "/admin/dashboard/stats": {
+      "get": {
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "description": "Get consolidated administrative business, catalog, customer, and system metrics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/logs/system": {
+      "get": {
+        "tags": [
+          "Admin Logs"
+        ],
+        "description": "Get operational system diagnostics, process memory stats, and database runtime metrics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/logs/errors": {
+      "get": {
+        "tags": [
+          "Admin Logs"
+        ],
+        "description": "Retrieve failed background jobs, failed email deliveries, and execution errors",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "source",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/ad-slots/{location}": {
       "get": {
         "tags": [
@@ -8501,6 +8976,9 @@
                             "type": "number"
                           },
                           "isFeatured": {
+                            "type": "boolean"
+                          },
+                          "isBreaking": {
                             "type": "boolean"
                           },
                           "publishedAt": {
@@ -8610,6 +9088,9 @@
                           "type": "number"
                         },
                         "isFeatured": {
+                          "type": "boolean"
+                        },
+                        "isBreaking": {
                           "type": "boolean"
                         },
                         "publishedAt": {
@@ -8826,6 +9307,81 @@
         }
       }
     },
+    "/blog/authors": {
+      "get": {
+        "tags": [
+          "Blog"
+        ],
+        "description": "List public author profiles with article counts",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/blog/authors/{slug}": {
+      "get": {
+        "tags": [
+          "Blog"
+        ],
+        "description": "Get public author profile by slug",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "slug",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/blog/authors/{slug}/posts": {
+      "get": {
+        "tags": [
+          "Blog"
+        ],
+        "description": "Get published articles written by a specific author",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "slug",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/admin/blog/posts": {
       "get": {
         "tags": [
@@ -8900,6 +9456,9 @@
                   },
                   "isFeatured": {
                     "type": "boolean"
+                  },
+                  "isBreaking": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -8947,6 +9506,9 @@
                   },
                   "isFeatured": {
                     "type": "boolean"
+                  },
+                  "isBreaking": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -8986,6 +9548,174 @@
             },
             "in": "path",
             "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/blog/posts/{id}/transition": {
+      "post": {
+        "tags": [
+          "Admin Blog"
+        ],
+        "description": "Transition an article through the editorial state machine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "toStatus": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "scheduledAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "toStatus"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/blog/posts/{id}/history": {
+      "get": {
+        "tags": [
+          "Admin Blog"
+        ],
+        "description": "Get editorial review history and reviewer notes for an article",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/blog/authors": {
+      "get": {
+        "tags": [
+          "Admin Blog"
+        ],
+        "description": "List all author profiles for administration",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/blog/authors/{userId}": {
+      "put": {
+        "tags": [
+          "Admin Blog"
+        ],
+        "description": "Create or update author profile metadata",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "slug": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "bio": {
+                    "type": "string"
+                  },
+                  "designation": {
+                    "type": "string"
+                  },
+                  "avatarUrl": {
+                    "type": "string"
+                  },
+                  "socialLinks": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "isPublic": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "slug"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "userId",
             "required": true
           }
         ],
@@ -9113,6 +9843,9 @@
                               }
                             ]
                           },
+                          "productType": {
+                            "type": "string"
+                          },
                           "stockQuantity": {
                             "type": "number"
                           },
@@ -9125,6 +9858,7 @@
                           "name",
                           "slug",
                           "price",
+                          "productType",
                           "stockQuantity",
                           "isAgeRestricted"
                         ]
@@ -9230,6 +9964,9 @@
                             }
                           ]
                         },
+                        "productType": {
+                          "type": "string"
+                        },
                         "stockQuantity": {
                           "type": "number"
                         },
@@ -9245,6 +9982,7 @@
                         "name",
                         "slug",
                         "price",
+                        "productType",
                         "stockQuantity",
                         "trackInventory",
                         "isAgeRestricted"
@@ -9323,13 +10061,23 @@
                       },
                       "required": [
                         "productId",
-                        "title",
-                        "price",
                         "quantity"
                       ]
                     }
                   },
                   "couponCode": {
+                    "type": "string"
+                  },
+                  "shippingAmount": {
+                    "type": "number"
+                  },
+                  "placeOfSupplyState": {
+                    "type": "string"
+                  },
+                  "shippingPincode": {
+                    "type": "string"
+                  },
+                  "paymentMethod": {
                     "type": "string"
                   }
                 },
@@ -9343,46 +10091,7 @@
         },
         "responses": {
           "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "subtotal": {
-                          "type": "number"
-                        },
-                        "discountTotal": {
-                          "type": "number"
-                        },
-                        "taxTotal": {
-                          "type": "number"
-                        },
-                        "shippingTotal": {
-                          "type": "number"
-                        },
-                        "total": {
-                          "type": "number"
-                        }
-                      },
-                      "required": [
-                        "subtotal",
-                        "discountTotal",
-                        "taxTotal",
-                        "shippingTotal",
-                        "total"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
+            "description": "Default Response"
           }
         }
       }
@@ -9392,7 +10101,7 @@
         "tags": [
           "Store"
         ],
-        "description": "Place an order via Razorpay or Cash on Delivery",
+        "description": "Place an order via Razorpay or Cash on Delivery with atomic stock reservation",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9439,8 +10148,6 @@
                       },
                       "required": [
                         "productId",
-                        "title",
-                        "price",
                         "quantity"
                       ]
                     }
@@ -9448,6 +10155,13 @@
                   "shippingAddress": {
                     "type": "object",
                     "additionalProperties": {}
+                  },
+                  "billingAddress": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "billingState": {
+                    "type": "string"
                   },
                   "couponCode": {
                     "type": "string"
@@ -9459,52 +10173,26 @@
                 "required": [
                   "customerEmail",
                   "paymentMethod",
-                  "items",
-                  "shippingAddress"
+                  "items"
                 ]
               }
             }
           },
           "required": true
         },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "orderNumber": {
-                          "type": "string"
-                        },
-                        "total": {
-                          "type": "number"
-                        },
-                        "paymentMethod": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "orderNumber",
-                        "total",
-                        "paymentMethod",
-                        "status"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
+            "description": "Default Response"
           }
         }
       }
@@ -9514,7 +10202,7 @@
         "tags": [
           "Store"
         ],
-        "description": "Verify Razorpay payment signature and mark order captured",
+        "description": "Verify razorpay signature (legacy alias)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9545,6 +10233,172 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/verify-payment": {
+      "post": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Verify payment signature with Razorpay and confirm order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "razorpayOrderId": {
+                    "type": "string"
+                  },
+                  "razorpayPaymentId": {
+                    "type": "string"
+                  },
+                  "razorpaySignature": {
+                    "type": "string"
+                  },
+                  "guestToken": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "razorpayPaymentId"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/orders/{id}": {
+      "get": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Get order details with customer ownership validation",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "guestToken",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/invoice": {
+      "get": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Get formal GST tax invoice or bill of supply for an order",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "guestToken",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/invoice/pdf": {
+      "get": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Download printable PDF of a GST tax invoice or bill of supply",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "guestToken",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/webhooks/razorpay": {
+      "post": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Razorpay webhook receiver with HMAC verification and deduplication",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-razorpay-signature",
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response"
@@ -9629,6 +10483,559 @@
         }
       }
     },
+    "/store/products/feed/meta.xml": {
+      "get": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Generate Meta Business Manager compliant product catalog XML feed",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/products/feed/meta.csv": {
+      "get": {
+        "tags": [
+          "Store"
+        ],
+        "description": "Generate Meta Business Manager compliant product catalog CSV feed",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/profile": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Get authenticated customer profile and order stats",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Update customer profile and communication preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "dateOfBirth": {
+                    "type": "string"
+                  },
+                  "communicationPreferences": {
+                    "type": "object",
+                    "properties": {
+                      "emailMarketing": {
+                        "type": "boolean"
+                      },
+                      "smsOrderUpdates": {
+                        "type": "boolean"
+                      },
+                      "whatsappUpdates": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/change-password": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Change customer password and invalidate active sessions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/addresses": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "List saved customer delivery addresses",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Add a new delivery address",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "addressLine1": {
+                    "type": "string"
+                  },
+                  "addressLine2": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "stateCode": {
+                    "type": "string"
+                  },
+                  "postalCode": {
+                    "type": "string"
+                  },
+                  "country": {
+                    "type": "string"
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "fullName",
+                  "phone",
+                  "addressLine1",
+                  "city",
+                  "state",
+                  "postalCode"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/addresses/{id}": {
+      "put": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Update an existing delivery address",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "addressLine1": {
+                    "type": "string"
+                  },
+                  "addressLine2": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "stateCode": {
+                    "type": "string"
+                  },
+                  "postalCode": {
+                    "type": "string"
+                  },
+                  "country": {
+                    "type": "string"
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Delete a saved delivery address",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/addresses/{id}/default": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Set an address as default",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/wishlist": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "List customer wishlist products",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Add product to wishlist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "productId"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/wishlist/{productId}": {
+      "delete": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Remove product from wishlist",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "productId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/orders": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "List customer orders with tracking information",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/orders/{id}": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Get customer order details with line items and tracking",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/orders/{id}/reorder": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Prepare reorder payload with live stock validation",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/orders/{id}/return-request": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Submit a return/refund request for an order line item",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "orderItemId": {
+                    "type": "number"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "orderItemId",
+                  "reason"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/return-requests": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "List customer return requests",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/export-data": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Export all personal customer data under DPDP Act",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/store/customer/delete-account": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "description": "Request account deletion and personal data anonymization under DPDP Act",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "passwordConfirm": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "passwordConfirm"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/admin/store/products": {
       "get": {
         "tags": [
@@ -9676,7 +11083,7 @@
         "tags": [
           "Admin Store"
         ],
-        "description": "Create ecommerce product",
+        "description": "Create ecommerce product (digital products require digital-delivery module)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9703,11 +11110,33 @@
                   "compareAtPrice": {
                     "type": "number"
                   },
+                  "productType": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "physical"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "digital"
+                        ]
+                      }
+                    ]
+                  },
                   "stockQuantity": {
                     "type": "number"
                   },
                   "lowStockThreshold": {
                     "type": "number"
+                  },
+                  "trackStock": {
+                    "type": "boolean"
+                  },
+                  "allowBackorder": {
+                    "type": "boolean"
                   },
                   "status": {
                     "type": "string"
@@ -9735,6 +11164,284 @@
         }
       }
     },
+    "/admin/store/products/export": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Export all products to a CSV file with formula-injection defenses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/products/import": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Bulk import products via CSV content with atomic stock adjustment tracking",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "csv"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalRows": {
+                          "type": "number"
+                        },
+                        "created": {
+                          "type": "number"
+                        },
+                        "updated": {
+                          "type": "number"
+                        },
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "row": {
+                                "type": "number"
+                              },
+                              "error": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "row",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "totalRows",
+                        "created",
+                        "updated",
+                        "errors"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/store/inventory/history": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Retrieve paginated stock movement audit ledger for inventory tracking",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "productId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "variantId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "changeType",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/inventory/adjust": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Manually adjust inventory stock quantity with required reason string and ledger logging",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "number"
+                  },
+                  "variantId": {
+                    "type": "number"
+                  },
+                  "quantityDelta": {
+                    "type": "number"
+                  },
+                  "changeType": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "restock"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "adjustment"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "release"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "reservation"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "damaged"
+                        ]
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "minLength": 3,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "productId",
+                  "quantityDelta",
+                  "reason"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "number"
+                        },
+                        "newStockQuantity": {
+                          "type": "number"
+                        },
+                        "stockMovementId": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "newStockQuantity",
+                        "stockMovementId"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/store/products/{id}": {
       "put": {
         "tags": [
@@ -9758,6 +11465,25 @@
                   },
                   "status": {
                     "type": "string"
+                  },
+                  "productType": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "physical"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "digital"
+                        ]
+                      }
+                    ]
+                  },
+                  "trackStock": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -9830,12 +11556,40 @@
         }
       }
     },
-    "/admin/store/orders/{id}/status": {
-      "put": {
+    "/admin/store/orders/{id}": {
+      "get": {
         "tags": [
           "Admin Store"
         ],
-        "description": "Update order fulfillment status",
+        "description": "Get detailed order record by ID",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/orders/{id}/transition": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Execute validated state machine transition for an order (returns 409 CONFLICT on invalid)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9843,6 +11597,9 @@
                 "type": "object",
                 "properties": {
                   "status": {
+                    "type": "string"
+                  },
+                  "reason": {
                     "type": "string"
                   }
                 },
@@ -9867,6 +11624,1659 @@
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/orders/{id}/notes": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Add internal or customer-visible note to an order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "isCustomerVisible": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "note"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/orders/{id}/refund": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Issue full or partial refund with gateway sync and optional restock",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amountPaise": {
+                    "type": "number"
+                  },
+                  "lineItems": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "orderItemId": {
+                          "type": "number"
+                        },
+                        "quantity": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "orderItemId",
+                        "quantity"
+                      ]
+                    }
+                  },
+                  "reason": {
+                    "minLength": 3,
+                    "type": "string"
+                  },
+                  "idempotencyKey": {
+                    "minLength": 5,
+                    "type": "string"
+                  },
+                  "restock": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "idempotencyKey"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/states": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Get all Indian states and Union Territories with official GST codes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/tax-classes": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Get all GST tax classes",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Create a new GST tax class",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "goods"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "service"
+                        ]
+                      }
+                    ]
+                  },
+                  "codeType": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "HSN"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "SAC"
+                        ]
+                      }
+                    ]
+                  },
+                  "code": {
+                    "minLength": 2,
+                    "type": "string"
+                  },
+                  "rateBasisPoints": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "cessBasisPoints": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "isExempt": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "code",
+                  "rateBasisPoints"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/tax-classes/{id}": {
+      "put": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Update a GST tax class",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "goods"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "service"
+                        ]
+                      }
+                    ]
+                  },
+                  "codeType": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "HSN"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "SAC"
+                        ]
+                      }
+                    ]
+                  },
+                  "code": {
+                    "minLength": 2,
+                    "type": "string"
+                  },
+                  "rateBasisPoints": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "cessBasisPoints": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "isExempt": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/settings/tax-cod": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Get store tax, GST, and COD settings",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Update store tax, GST, and COD settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sellerRegistrationType": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "regular"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "composition"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "unregistered"
+                        ]
+                      }
+                    ]
+                  },
+                  "sellerGstin": {
+                    "type": "string"
+                  },
+                  "sellerLegalName": {
+                    "type": "string"
+                  },
+                  "sellerTradeName": {
+                    "type": "string"
+                  },
+                  "sellerState": {
+                    "type": "string"
+                  },
+                  "priceIncludesTax": {
+                    "type": "boolean"
+                  },
+                  "roundingMode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "per_line"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "per_invoice"
+                        ]
+                      }
+                    ]
+                  },
+                  "shippingTaxMode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "product_proportional"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "highest_product_rate"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "fixed_service_rate"
+                        ]
+                      }
+                    ]
+                  },
+                  "shippingTaxClassId": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "codEnabled": {
+                    "type": "boolean"
+                  },
+                  "codMinOrderPaise": {
+                    "type": "number"
+                  },
+                  "codMaxOrderPaise": {
+                    "type": "number"
+                  },
+                  "codFeePaise": {
+                    "type": "number"
+                  },
+                  "codBlockedPincodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "codRequiresConfirmation": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/invoices": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Admin list all customer GST tax invoices with pagination and filters",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "financialYear",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "orderId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/invoices/{id}": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Get full details and snapshots of a GST tax invoice",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/invoices/{id}/pdf": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Download printable PDF of a GST tax invoice",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/credit-notes": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Admin list all GST credit notes with pagination",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "financialYear",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/credit-notes/{id}": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Get details of a credit note",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/credit-notes/{id}/pdf": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Download printable PDF of a credit note",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/customers": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Admin paginated customer directory with order stats and segments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "search",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "segment",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/customers/export": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Export customer directory to CSV format",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/customers/{id}": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Get customer profile, addresses, orders, return requests, and internal notes",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/customers/{id}/segment": {
+      "put": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Assign customer segment (standard, vip, wholesale, at_risk)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "segment": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "segment"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/customers/{id}/notes": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Add an internal staff note to customer record",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "note"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/return-requests": {
+      "get": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "List all return requests across customers",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/store/return-requests/{id}/transition": {
+      "post": {
+        "tags": [
+          "Admin Store"
+        ],
+        "description": "Approve, reject, or complete a customer return request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "adminNotes": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/shipping/rates": {
+      "post": {
+        "tags": [
+          "Shipping"
+        ],
+        "description": "Calculate available shipping rates and delivery estimates for cart destination",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "number"
+                        },
+                        "productType": {
+                          "type": "string"
+                        },
+                        "quantity": {
+                          "minimum": 1,
+                          "type": "number"
+                        },
+                        "pricePaise": {
+                          "type": "number"
+                        },
+                        "weightGrams": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "quantity"
+                      ]
+                    }
+                  },
+                  "destination": {
+                    "type": "object",
+                    "properties": {
+                      "country": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "pincode": {
+                        "minLength": 3,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pincode"
+                    ]
+                  },
+                  "cod": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "items",
+                  "destination"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "carrierName": {
+                            "type": "string"
+                          },
+                          "amountPaise": {
+                            "type": "number"
+                          },
+                          "estimatedDaysMin": {
+                            "type": "number"
+                          },
+                          "estimatedDaysMax": {
+                            "type": "number"
+                          },
+                          "partner": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "name",
+                          "carrierName",
+                          "amountPaise",
+                          "estimatedDaysMin",
+                          "estimatedDaysMax",
+                          "partner"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipping/serviceability": {
+      "post": {
+        "tags": [
+          "Shipping"
+        ],
+        "description": "Verify if a postal code is serviceable for physical delivery and COD",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pincode": {
+                    "minLength": 3,
+                    "type": "string"
+                  },
+                  "weightGrams": {
+                    "type": "number"
+                  },
+                  "cod": {
+                    "type": "boolean"
+                  },
+                  "partner": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pincode"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "serviceable": {
+                      "type": "boolean"
+                    },
+                    "estimatedDays": {
+                      "type": "number"
+                    },
+                    "codAvailable": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "serviceable"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shipping/webhook/{partner}": {
+      "post": {
+        "tags": [
+          "Shipping"
+        ],
+        "description": "Receive tracking status update webhook from integrated logistics partners",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "partner",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/settings": {
+      "get": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Get global shipping settings and origin address",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Update shipping configuration and partner credentials",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "originPincode": {
+                    "type": "string"
+                  },
+                  "originCity": {
+                    "type": "string"
+                  },
+                  "originState": {
+                    "type": "string"
+                  },
+                  "originCountry": {
+                    "type": "string"
+                  },
+                  "defaultPartner": {
+                    "type": "string"
+                  },
+                  "activePartners": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "disabledBehavior": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "fallback_flat_rate"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "block_physical"
+                        ]
+                      }
+                    ]
+                  },
+                  "fallbackRatePaise": {
+                    "type": "number"
+                  },
+                  "freeShippingThresholdPaise": {
+                    "type": "number"
+                  },
+                  "shiprocketApiKey": {
+                    "type": "string"
+                  },
+                  "shiprocketApiSecret": {
+                    "type": "string"
+                  },
+                  "delhiveryApiKey": {
+                    "type": "string"
+                  },
+                  "delhiveryClientName": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/zones": {
+      "get": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "List configured shipping zones and rates",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Create a new geographical shipping zone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "countries": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "states": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pincodes": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "priority": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "countries"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/zones/{id}": {
+      "put": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Update geographical shipping zone parameters",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "countries": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "states": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pincodes": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "priority": {
+                    "type": "number"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Delete shipping zone and associated rate tiers",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/zones/{id}/rates": {
+      "post": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Add a rate tier to a shipping zone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "rateType": {
+                    "type": "string"
+                  },
+                  "minWeightGrams": {
+                    "type": "number"
+                  },
+                  "maxWeightGrams": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "minOrderPaise": {
+                    "type": "number"
+                  },
+                  "maxOrderPaise": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ratePaise": {
+                    "type": "number"
+                  },
+                  "estimatedDaysMin": {
+                    "type": "number"
+                  },
+                  "estimatedDaysMax": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "ratePaise"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/shipments": {
+      "post": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Create shipment with carrier partner, generate AWB tracking number and manifest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "number"
+                  },
+                  "partner": {
+                    "type": "string"
+                  },
+                  "weightGrams": {
+                    "type": "number"
+                  },
+                  "carrierName": {
+                    "type": "string"
+                  },
+                  "shippingFeePaise": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "orderId"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "List all shipments with status and tracking details",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "perPage",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/shipments/{id}": {
+      "get": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Get live tracking details and history for a shipment",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/shipments/{id}/label": {
+      "get": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Get URL or PDF of shipping label for packing and dispatch",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/shipping/shipments/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Admin Shipping"
+        ],
+        "description": "Cancel a manifested shipment with the carrier partner",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
           }
         ],
         "responses": {
@@ -10068,6 +13478,148 @@
         }
       }
     },
+    "/donations/subscribe": {
+      "post": {
+        "tags": [
+          "Donations"
+        ],
+        "description": "Initiate a recurring donation subscription (monthly, quarterly, yearly)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "campaignSlug": {
+                    "type": "string"
+                  },
+                  "donorName": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "donorEmail": {
+                    "format": "email",
+                    "type": "string"
+                  },
+                  "donorPan": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "minimum": 10000,
+                    "type": "number"
+                  },
+                  "frequency": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "monthly"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "quarterly"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "yearly"
+                        ]
+                      }
+                    ]
+                  },
+                  "isAnonymous": {
+                    "type": "boolean"
+                  },
+                  "subscriptionId": {
+                    "type": "string"
+                  },
+                  "initialPaymentId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "campaignSlug",
+                  "donorName",
+                  "donorEmail",
+                  "amount"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/donations/webhook": {
+      "post": {
+        "tags": [
+          "Donations"
+        ],
+        "description": "Inbound Razorpay recurring subscription webhook handler (subscription.charged, etc.)",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/donations/my-donations": {
+      "get": {
+        "tags": [
+          "Donations"
+        ],
+        "description": "Get authenticated donor donation history and 80G tax exemption receipts",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/donations/my-subscriptions": {
+      "get": {
+        "tags": [
+          "Donations"
+        ],
+        "description": "Get authenticated donor active and past recurring donation subscriptions",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/donations/subscriptions/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Donations"
+        ],
+        "description": "Cancel an active recurring donation subscription",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/admin/donations/campaigns": {
       "get": {
         "tags": [
@@ -10143,6 +13695,405 @@
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/donations/subscriptions": {
+      "get": {
+        "tags": [
+          "Admin Donations"
+        ],
+        "description": "View all recurring donation subscriptions across campaigns",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "campaignId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "donorEmail",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/donations/subscriptions/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Admin Donations"
+        ],
+        "description": "Admin manually cancel a recurring donation subscription",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/digital/orders/{orderId}/entitlements": {
+      "get": {
+        "tags": [
+          "Digital Delivery"
+        ],
+        "description": "Retrieve digital delivery entitlements (downloads, license keys) for an order",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/digital/download/{token}": {
+      "get": {
+        "tags": [
+          "Digital Delivery"
+        ],
+        "description": "Verify and download digital file by unique entitlement download token",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "token",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/digital/licenses/verify": {
+      "post": {
+        "tags": [
+          "Digital Delivery"
+        ],
+        "description": "Verify license key validity and status for desktop or client apps",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "licenseKey": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "licenseKey"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/digital/assets": {
+      "get": {
+        "tags": [
+          "Admin Digital Delivery"
+        ],
+        "description": "List downloadable digital assets",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "productId",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Digital Delivery"
+        ],
+        "description": "Create and attach downloadable asset to digital product",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "number"
+                  },
+                  "variantId": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fileName": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "storagePath": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "fileSizeBytes": {
+                    "type": "number"
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  },
+                  "downloadLimit": {
+                    "type": "number"
+                  },
+                  "expiresHours": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "productId",
+                  "fileName",
+                  "storagePath"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/digital/assets/{id}": {
+      "delete": {
+        "tags": [
+          "Admin Digital Delivery"
+        ],
+        "description": "Deactivate digital product asset",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/digital/licenses": {
+      "get": {
+        "tags": [
+          "Admin Digital Delivery"
+        ],
+        "description": "List license key pool entries and assignments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "productId",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "available"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "assigned"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "revoked"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/digital/licenses/pool": {
+      "post": {
+        "tags": [
+          "Admin Digital Delivery"
+        ],
+        "description": "Bulk upload license keys into product pool",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "number"
+                  },
+                  "variantId": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "keys": {
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "productId",
+                  "keys"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/admin/digital/entitlements/{id}/revoke": {
+      "post": {
+        "tags": [
+          "Admin Digital Delivery"
+        ],
+        "description": "Revoke single digital entitlement download token and license key",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
           }
         ],
         "responses": {

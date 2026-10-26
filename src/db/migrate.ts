@@ -1468,6 +1468,58 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0011_recurring_donations_h2_7 completed.');
+    }
+
+    // Check 0012_editorial_workflow_authors_h2_8
+    const [rows12] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0012_editorial_workflow_authors_h2_8']
+    );
+
+    if (rows12.length === 0) {
+      console.log('[Migration] Applying 0012_editorial_workflow_authors_h2_8...');
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS author_profiles (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+          name VARCHAR(150) NOT NULL,
+          slug VARCHAR(100) NOT NULL UNIQUE,
+          bio TEXT NULL,
+          designation VARCHAR(100) NULL,
+          avatar_url VARCHAR(500) NULL,
+          social_links JSON NULL,
+          is_public BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_author_slug (slug),
+          CONSTRAINT fk_author_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS blog_editorial_history (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          post_id BIGINT UNSIGNED NOT NULL,
+          from_status VARCHAR(30) NOT NULL,
+          to_status VARCHAR(30) NOT NULL,
+          actor_id BIGINT UNSIGNED NOT NULL,
+          actor_name VARCHAR(150) NULL,
+          notes TEXT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_editorial_post (post_id),
+          INDEX idx_editorial_actor (actor_id),
+          CONSTRAINT fk_editorial_post FOREIGN KEY (post_id) REFERENCES blog_posts (id) ON DELETE CASCADE,
+          CONSTRAINT fk_editorial_actor FOREIGN KEY (actor_id) REFERENCES users (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0012_editorial_workflow_authors_h2_8']
+      );
+
+      console.log('[Migration] 0012_editorial_workflow_authors_h2_8 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }

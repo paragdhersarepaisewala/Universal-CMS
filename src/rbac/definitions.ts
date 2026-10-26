@@ -65,6 +65,10 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   // Module Permissions (Optional modules)
   { key: 'blog.posts.view', module: 'blog', description: 'View blog posts' },
   { key: 'blog.posts.edit', module: 'blog', description: 'Create and edit blog posts' },
+  { key: 'blog.posts.publish', module: 'blog', description: 'Publish or schedule approved articles' },
+  { key: 'blog.editorial.review', module: 'blog', description: 'Review, request changes, or approve articles in editorial workflow' },
+  { key: 'blog.authors.view', module: 'blog', description: 'View author directory' },
+  { key: 'blog.authors.manage', module: 'blog', description: 'Manage author profiles and bios' },
   { key: 'blog.taxonomy.view', module: 'blog', description: 'View blog categories and tags' },
   { key: 'store.products.view', module: 'store', description: 'View ecommerce products' },
   { key: 'store.products.edit', module: 'store', description: 'Create and edit products' },
@@ -142,6 +146,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'donations.campaigns.edit',
     'donations.subscriptions.view',
     'donations.subscriptions.manage',
+    'blog.posts.publish',
+    'blog.editorial.review',
+    'blog.authors.view',
+    'blog.authors.manage',
   ],
 
   manager: [
@@ -156,6 +164,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'core.logs.view',
     'blog.posts.view',
     'blog.posts.edit',
+    'blog.posts.publish',
+    'blog.editorial.review',
+    'blog.authors.view',
+    'blog.authors.manage',
     'store.products.view',
     'store.products.edit',
     'store.orders.view',
@@ -173,6 +185,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'core.menus.view',
     'blog.posts.view',
     'blog.posts.edit',
+    'blog.editorial.review',
+    'blog.authors.view',
   ],
 
   support: [

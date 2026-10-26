@@ -1,6 +1,8 @@
 import { db } from '../../db/index.js';
-import { blogPosts, blogCategories, blogTags } from '../../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { blogPosts, blogCategories, blogTags, authorProfiles, blogEditorialHistory } from '../../db/schema.js';
+import { eq, desc, and } from 'drizzle-orm';
+
+export type BlogPostStatus = 'draft' | 'in_review' | 'changes_requested' | 'approved' | 'published' | 'scheduled' | 'archived';
 
 export interface BlogPostRecord {
   id: number;
@@ -11,7 +13,7 @@ export interface BlogPostRecord {
   authorId: number;
   authorName?: string;
   featuredImageId?: number | null;
-  status: 'draft' | 'published' | 'scheduled' | 'archived';
+  status: BlogPostStatus;
   publishedAt?: string | null;
   readingTimeMinutes: number;
   isFeatured: boolean;
@@ -37,6 +39,42 @@ export interface BlogTagRecord {
   createdAt: string;
 }
 
+export interface AuthorProfileRecord {
+  id: number;
+  userId: number;
+  name: string;
+  slug: string;
+  bio?: string | null;
+  designation?: string | null;
+  avatarUrl?: string | null;
+  socialLinks?: Record<string, string> | null;
+  isPublic: boolean;
+  articleCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EditorialHistoryRecord {
+  id: number;
+  postId: number;
+  fromStatus: string;
+  toStatus: string;
+  actorId: number;
+  actorName?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export const EDITORIAL_STATUS_TRANSITIONS: Record<BlogPostStatus, BlogPostStatus[]> = {
+  draft: ['in_review', 'archived'],
+  in_review: ['changes_requested', 'approved', 'draft'],
+  changes_requested: ['in_review', 'draft'],
+  approved: ['published', 'scheduled', 'draft'],
+  published: ['archived', 'draft'],
+  scheduled: ['published', 'draft'],
+  archived: ['draft'],
+};
+
 const inMemoryCategories: BlogCategoryRecord[] = [
   { id: 1, name: 'Technology', slug: 'technology', description: 'Tech insights and engineering', createdAt: new Date().toISOString() },
   { id: 2, name: 'Updates', slug: 'updates', description: 'Product releases and announcements', createdAt: new Date().toISOString() },
@@ -46,6 +84,25 @@ const inMemoryTags: BlogTagRecord[] = [
   { id: 1, name: 'Engineering', slug: 'engineering', createdAt: new Date().toISOString() },
   { id: 2, name: 'CMS', slug: 'cms', createdAt: new Date().toISOString() },
 ];
+
+const inMemoryAuthors: AuthorProfileRecord[] = [
+  {
+    id: 1,
+    userId: 1,
+    name: 'Admin',
+    slug: 'admin',
+    bio: 'Lead Architect and Editor at Universal CMS',
+    designation: 'Editor-in-Chief',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+    socialLinks: { twitter: 'https://twitter.com/universalcms', linkedin: 'https://linkedin.com/company/universalcms' },
+    isPublic: true,
+    articleCount: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const inMemoryEditorialHistory: EditorialHistoryRecord[] = [];
 
 const inMemoryPosts: BlogPostRecord[] = [
   {
@@ -144,8 +201,9 @@ export class BlogService {
 
   // --- Posts ---
   static async listPosts(options?: {
-    status?: 'draft' | 'published' | 'scheduled' | 'archived';
+    status?: BlogPostStatus;
     search?: string;
+    authorId?: number;
     page?: number;
     perPage?: number;
   }): Promise<{ data: BlogPostRecord[]; total: number }> {
@@ -158,18 +216,21 @@ export class BlogService {
       items = items.filter(p => p.status === options.status);
     }
 
+    if (options?.authorId) {
+      items = items.filter(p => p.authorId === options.authorId);
+    }
+
     if (options?.search) {
       const q = options.search.toLowerCase();
       items = items.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
     }
 
     try {
-      const query = db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
-      const rows = await query;
+      const rows = await db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
       if (rows.length > 0) {
         const dbItems = rows.map(r => ({
           ...r,
-          status: r.status as BlogPostRecord['status'],
+          status: r.status as BlogPostStatus,
           publishedAt: r.publishedAt?.toISOString() || null,
           createdAt: r.createdAt.toISOString(),
           updatedAt: r.updatedAt.toISOString(),
@@ -177,8 +238,16 @@ export class BlogService {
         const dbSlugs = new Set(dbItems.map(d => d.slug));
         const defaultSeeds = inMemoryPosts.filter(p => !dbSlugs.has(p.slug));
         items = [...dbItems, ...defaultSeeds];
+
         if (options?.status) {
           items = items.filter(p => p.status === options.status);
+        }
+        if (options?.authorId) {
+          items = items.filter(p => p.authorId === options.authorId);
+        }
+        if (options?.search) {
+          const q = options.search.toLowerCase();
+          items = items.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q));
         }
       }
     } catch {
@@ -197,7 +266,7 @@ export class BlogService {
       if (rows[0]) {
         return {
           ...rows[0],
-          status: rows[0].status as BlogPostRecord['status'],
+          status: rows[0].status as BlogPostStatus,
           publishedAt: rows[0].publishedAt?.toISOString() || null,
           createdAt: rows[0].createdAt.toISOString(),
           updatedAt: rows[0].updatedAt.toISOString(),
@@ -209,6 +278,24 @@ export class BlogService {
     return inMemoryPosts.find(p => p.slug === slug) || null;
   }
 
+  static async getPostById(id: number): Promise<BlogPostRecord | null> {
+    try {
+      const rows = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+      if (rows[0]) {
+        return {
+          ...rows[0],
+          status: rows[0].status as BlogPostStatus,
+          publishedAt: rows[0].publishedAt?.toISOString() || null,
+          createdAt: rows[0].createdAt.toISOString(),
+          updatedAt: rows[0].updatedAt.toISOString(),
+        };
+      }
+    } catch {
+      // Fallback
+    }
+    return inMemoryPosts.find(p => p.id === id) || null;
+  }
+
   static async createPost(data: {
     title: string;
     slug: string;
@@ -217,9 +304,10 @@ export class BlogService {
     authorId: number;
     authorName?: string;
     featuredImageId?: number;
-    status?: 'draft' | 'published' | 'scheduled' | 'archived';
+    status?: BlogPostStatus;
     publishedAt?: string;
     isFeatured?: boolean;
+    isBreaking?: boolean;
   }): Promise<BlogPostRecord> {
     const readingTime = this.calculateReadingTime(data.content);
     const status = data.status || 'draft';
@@ -238,6 +326,7 @@ export class BlogService {
       publishedAt,
       readingTimeMinutes: readingTime,
       isFeatured: data.isFeatured || false,
+      isBreaking: data.isBreaking || false,
       version: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -268,16 +357,21 @@ export class BlogService {
 
   static async updatePost(id: number, data: Partial<BlogPostRecord>): Promise<BlogPostRecord | null> {
     const post = inMemoryPosts.find(p => p.id === id);
-    if (!post) return null;
+    if (!post) {
+      const dbPost = await this.getPostById(id);
+      if (!dbPost) return null;
+      inMemoryPosts.push(dbPost);
+    }
+    const target = inMemoryPosts.find(p => p.id === id)!;
 
     if (data.content) {
       data.readingTimeMinutes = this.calculateReadingTime(data.content);
     }
-    if (data.status === 'published' && !post.publishedAt) {
+    if (data.status === 'published' && !target.publishedAt) {
       data.publishedAt = new Date().toISOString();
     }
 
-    Object.assign(post, data, { updatedAt: new Date().toISOString(), version: post.version + 1 });
+    Object.assign(target, data, { updatedAt: new Date().toISOString(), version: target.version + 1 });
 
     try {
       const rest = { ...data };
@@ -286,13 +380,13 @@ export class BlogService {
       await db.update(blogPosts).set({
         ...(rest as Record<string, unknown>),
         publishedAt: data.publishedAt ? new Date(data.publishedAt) : undefined,
-        version: post.version,
+        version: target.version,
       }).where(eq(blogPosts.id, id));
     } catch {
       // Fallback
     }
 
-    return post;
+    return target;
   }
 
   static async deletePost(id: number): Promise<boolean> {
@@ -306,8 +400,330 @@ export class BlogService {
     return true;
   }
 
+  // --- Author Profiles ---
+  static async listAuthors(options?: { onlyPublic?: boolean }): Promise<AuthorProfileRecord[]> {
+    const onlyPublic = options?.onlyPublic !== false;
+    let profiles: AuthorProfileRecord[] = [];
+
+    try {
+      const rows = await db.select().from(authorProfiles);
+      if (rows.length > 0) {
+        profiles = rows.map(r => ({
+          id: r.id,
+          userId: r.userId,
+          name: r.name,
+          slug: r.slug,
+          bio: r.bio,
+          designation: r.designation,
+          avatarUrl: r.avatarUrl,
+          socialLinks: (r.socialLinks as Record<string, string>) || null,
+          isPublic: r.isPublic,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    const dbSlugs = new Set(profiles.map(p => p.slug));
+    const defaultSeeds = inMemoryAuthors.filter(a => !dbSlugs.has(a.slug));
+    profiles = [...profiles, ...defaultSeeds];
+
+    if (onlyPublic) {
+      profiles = profiles.filter(p => p.isPublic);
+    }
+
+    // Attach published article count
+    const { data: publishedPosts } = await this.listPosts({ status: 'published', perPage: 1000 });
+    for (const author of profiles) {
+      author.articleCount = publishedPosts.filter(p => p.authorId === author.userId).length;
+    }
+
+    return profiles;
+  }
+
+  static async getAuthorProfile(slugOrUserId: string | number): Promise<AuthorProfileRecord | null> {
+    let author: AuthorProfileRecord | null = null;
+
+    try {
+      if (typeof slugOrUserId === 'number') {
+        const rows = await db.select().from(authorProfiles).where(eq(authorProfiles.userId, slugOrUserId));
+        if (rows[0]) {
+          author = {
+            id: rows[0].id,
+            userId: rows[0].userId,
+            name: rows[0].name,
+            slug: rows[0].slug,
+            bio: rows[0].bio,
+            designation: rows[0].designation,
+            avatarUrl: rows[0].avatarUrl,
+            socialLinks: (rows[0].socialLinks as Record<string, string>) || null,
+            isPublic: rows[0].isPublic,
+            createdAt: rows[0].createdAt.toISOString(),
+            updatedAt: rows[0].updatedAt.toISOString(),
+          };
+        }
+      } else {
+        const rows = await db.select().from(authorProfiles).where(eq(authorProfiles.slug, slugOrUserId));
+        if (rows[0]) {
+          author = {
+            id: rows[0].id,
+            userId: rows[0].userId,
+            name: rows[0].name,
+            slug: rows[0].slug,
+            bio: rows[0].bio,
+            designation: rows[0].designation,
+            avatarUrl: rows[0].avatarUrl,
+            socialLinks: (rows[0].socialLinks as Record<string, string>) || null,
+            isPublic: rows[0].isPublic,
+            createdAt: rows[0].createdAt.toISOString(),
+            updatedAt: rows[0].updatedAt.toISOString(),
+          };
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    if (!author) {
+      if (typeof slugOrUserId === 'number') {
+        author = inMemoryAuthors.find(a => a.userId === slugOrUserId) || null;
+      } else {
+        author = inMemoryAuthors.find(a => a.slug === slugOrUserId) || null;
+      }
+    }
+
+    if (author) {
+      const { data: publishedPosts } = await this.listPosts({ status: 'published', perPage: 1000 });
+      author.articleCount = publishedPosts.filter(p => p.authorId === author!.userId).length;
+    }
+
+    return author;
+  }
+
+  static async upsertAuthorProfile(userId: number, data: {
+    name: string;
+    slug: string;
+    bio?: string | null;
+    designation?: string | null;
+    avatarUrl?: string | null;
+    socialLinks?: Record<string, string> | null;
+    isPublic?: boolean;
+  }): Promise<AuthorProfileRecord> {
+    const existing = await this.getAuthorProfile(userId);
+    const now = new Date().toISOString();
+
+    if (existing) {
+      const updated: AuthorProfileRecord = {
+        ...existing,
+        name: data.name,
+        slug: data.slug,
+        bio: data.bio ?? existing.bio,
+        designation: data.designation ?? existing.designation,
+        avatarUrl: data.avatarUrl ?? existing.avatarUrl,
+        socialLinks: data.socialLinks ?? existing.socialLinks,
+        isPublic: data.isPublic ?? existing.isPublic,
+        updatedAt: now,
+      };
+
+      try {
+        await db.update(authorProfiles).set({
+          name: updated.name,
+          slug: updated.slug,
+          bio: updated.bio,
+          designation: updated.designation,
+          avatarUrl: updated.avatarUrl,
+          socialLinks: updated.socialLinks,
+          isPublic: updated.isPublic,
+        }).where(eq(authorProfiles.userId, userId));
+      } catch {
+        // Fallback
+      }
+
+      const inMemIdx = inMemoryAuthors.findIndex(a => a.userId === userId);
+      if (inMemIdx !== -1) inMemoryAuthors[inMemIdx] = updated;
+      return updated;
+    }
+
+    const created: AuthorProfileRecord = {
+      id: inMemoryAuthors.length + 1,
+      userId,
+      name: data.name,
+      slug: data.slug,
+      bio: data.bio || null,
+      designation: data.designation || null,
+      avatarUrl: data.avatarUrl || null,
+      socialLinks: data.socialLinks || null,
+      isPublic: data.isPublic ?? true,
+      articleCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      const [res] = await db.insert(authorProfiles).values({
+        userId,
+        name: created.name,
+        slug: created.slug,
+        bio: created.bio,
+        designation: created.designation,
+        avatarUrl: created.avatarUrl,
+        socialLinks: created.socialLinks,
+        isPublic: created.isPublic,
+      });
+      created.id = Number(res.insertId);
+    } catch {
+      // Fallback
+    }
+
+    inMemoryAuthors.push(created);
+    return created;
+  }
+
+  static async listAuthorPosts(slug: string, options?: { page?: number; perPage?: number }): Promise<{
+    author: AuthorProfileRecord;
+    data: BlogPostRecord[];
+    meta: { total: number; page: number; perPage: number };
+  } | null> {
+    const author = await this.getAuthorProfile(slug);
+    if (!author || (!author.isPublic && options?.perPage !== -1)) {
+      return null;
+    }
+
+    const page = options?.page || 1;
+    const perPage = options?.perPage || 10;
+
+    const { data: posts, total } = await this.listPosts({
+      status: 'published',
+      authorId: author.userId,
+      page,
+      perPage,
+    });
+
+    return {
+      author,
+      data: posts,
+      meta: { total, page, perPage },
+    };
+  }
+
+  // --- Multi-stage Editorial Workflow ---
+  static async transitionPostStatus(
+    postId: number,
+    toStatus: BlogPostStatus,
+    actor: { id: number; name?: string; role?: string },
+    notes?: string,
+    scheduledAt?: string
+  ): Promise<{
+    success: boolean;
+    error?: { code: string; message: string };
+    post?: BlogPostRecord;
+    history?: EditorialHistoryRecord;
+  }> {
+    const post = await this.getPostById(postId);
+    if (!post) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: `Post with ID ${postId} not found` },
+      };
+    }
+
+    if (post.status === toStatus) {
+      return {
+        success: false,
+        error: { code: 'NO_CHANGE', message: `Post is already in status '${toStatus}'` },
+      };
+    }
+
+    const allowed = EDITORIAL_STATUS_TRANSITIONS[post.status] || [];
+    if (!allowed.includes(toStatus)) {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_TRANSITION',
+          message: `Cannot transition from '${post.status}' to '${toStatus}'. Allowed transitions: ${allowed.join(', ') || 'none'}`,
+        },
+      };
+    }
+
+    const updates: Partial<BlogPostRecord> = { status: toStatus };
+    if (toStatus === 'published') {
+      updates.publishedAt = post.publishedAt || new Date().toISOString();
+    } else if (toStatus === 'scheduled') {
+      updates.publishedAt = scheduledAt || new Date(Date.now() + 86400000).toISOString();
+    }
+
+    const updatedPost = await this.updatePost(postId, updates);
+    if (!updatedPost) {
+      return {
+        success: false,
+        error: { code: 'UPDATE_FAILED', message: 'Failed to update post status' },
+      };
+    }
+
+    const historyRecord: EditorialHistoryRecord = {
+      id: inMemoryEditorialHistory.length + 1,
+      postId,
+      fromStatus: post.status,
+      toStatus,
+      actorId: actor.id,
+      actorName: actor.name || 'Staff',
+      notes: notes || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const [res] = await db.insert(blogEditorialHistory).values({
+        postId,
+        fromStatus: post.status,
+        toStatus,
+        actorId: actor.id,
+        actorName: actor.name || 'Staff',
+        notes: notes || null,
+      });
+      historyRecord.id = Number(res.insertId);
+    } catch {
+      // Fallback
+    }
+
+    inMemoryEditorialHistory.unshift(historyRecord);
+
+    return {
+      success: true,
+      post: updatedPost,
+      history: historyRecord,
+    };
+  }
+
+  static async getEditorialHistory(postId: number): Promise<EditorialHistoryRecord[]> {
+    try {
+      const rows = await db.select().from(blogEditorialHistory)
+        .where(eq(blogEditorialHistory.postId, postId))
+        .orderBy(desc(blogEditorialHistory.createdAt));
+
+      if (rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          postId: r.postId,
+          fromStatus: r.fromStatus,
+          toStatus: r.toStatus,
+          actorId: r.actorId,
+          actorName: r.actorName,
+          notes: r.notes,
+          createdAt: r.createdAt.toISOString(),
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+
+    return inMemoryEditorialHistory.filter(h => h.postId === postId);
+  }
+
+  // --- RSS & Sitemaps ---
   static async generateRssFeed(siteTitle: string = 'Universal CMS Blog', siteUrl: string = 'http://localhost:3000'): Promise<string> {
-    const { data: posts } = await this.listPosts({ status: 'published' });
+    const { data: posts } = await this.listPosts({ status: 'published', perPage: 100 });
 
     const itemsXml = posts.map(p => `
     <item>
@@ -331,7 +747,7 @@ export class BlogService {
   }
 
   static async generateNewsSitemap(siteName: string = 'Universal CMS News', siteUrl: string = 'http://localhost:3000'): Promise<string> {
-    const { data: posts } = await this.listPosts({ status: 'published' });
+    const { data: posts } = await this.listPosts({ status: 'published', perPage: 100 });
 
     const itemsXml = posts.map(p => `
     <url>
@@ -358,4 +774,3 @@ export class BlogService {
     return posts.filter(p => p.slug !== currentSlug).slice(0, limit);
   }
 }
-

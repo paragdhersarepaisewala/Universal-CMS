@@ -292,5 +292,43 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI Contract spec `DONATE-01` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.7`).
   - Integration test suite in `tests/donations-recurring.test.ts` (9 real MySQL tests covering subscription initiation, next charge scheduling, one-time donation thank-you emails, webhook charged processing, 80G receipt generation, idempotency deduplication, cancellation webhook handling, donor ownership verification, admin listing/cancellation, and RBAC 403 enforcement).
 
+## [0.2.8] - 2026-10-26T11:55:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.8 (News Portal: Author Profiles API, Public Directory, and Multi-Stage Editorial Workflow State Machine):
+  - Database schema additions via migration `0012_editorial_workflow_authors_h2_8`:
+    - `author_profiles`: `id`, `user_id` (unique), `name`, `slug` (unique), `bio`, `designation`, `avatar_url`, `social_links` JSON, `is_public`, `created_at`, `updated_at`.
+    - `blog_editorial_history`: `id`, `post_id`, `from_status`, `to_status`, `actor_id`, `actor_name`, `notes`, `created_at`.
+  - Author Profiles Engine (`src/modules/blog/service.ts`):
+    - `listAuthors`: lists author profiles with computed published article counts from `blogPosts`.
+    - `getAuthorProfile`: retrieves single author profile by slug or user ID with article counts.
+    - `upsertAuthorProfile`: creates or updates author profiles with designation, bio, avatar, and social links.
+    - `listAuthorPosts`: returns paginated list of published articles written by a specific author.
+  - Multi-Stage Editorial Workflow State Machine (`src/modules/blog/service.ts`):
+    - Strict state transition matrix enforcement:
+      - `draft` -> `in_review`, `archived`
+      - `in_review` -> `changes_requested`, `approved`, `draft`
+      - `changes_requested` -> `in_review`, `draft`
+      - `approved` -> `published`, `scheduled`, `draft`
+      - `published` -> `archived`, `draft`
+      - `scheduled` -> `published`, `draft`
+      - `archived` -> `draft`
+    - Invalid transitions return HTTP 400 `INVALID_TRANSITION` detailing the allowed target states.
+    - `transitionPostStatus`: atomically executes status updates, adjusts `publishedAt` on publication or scheduled timestamp, and appends a transition audit record into `blog_editorial_history`.
+    - `getEditorialHistory`: retrieves ordered review audit trail with reviewer names and notes.
+  - Public Storefront Endpoints:
+    - `GET /api/v1/blog/authors`: Public directory of active authors with article counts.
+    - `GET /api/v1/blog/authors/:slug`: Public single author profile metadata.
+    - `GET /api/v1/blog/authors/:slug/posts`: Public paginated articles written by author.
+  - Admin Newsroom Endpoints:
+    - `GET /api/v1/admin/blog/authors`: List all author profiles including non-public.
+    - `PUT /api/v1/admin/blog/authors/:userId`: Create or update author profile credentials.
+    - `POST /api/v1/admin/blog/posts/:id/transition`: Transition article through the editorial review state machine with notes.
+    - `GET /api/v1/admin/blog/posts/:id/history`: View full editorial audit history and review notes.
+  - RBAC Permissions:
+    - `blog.authors.view`, `blog.authors.manage`, `blog.editorial.review`, `blog.posts.publish`.
+  - Admin UI Contract specs `NEWS-01` and `NEWS-02` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.8`).
+  - Integration test suite in `tests/news-editorial.test.ts` (15 real MySQL tests covering author directory, author lookup, author posts, admin profile upserts, multi-stage transitions draft -> in_review -> changes_requested -> in_review -> approved -> published, invalid transition rejection, review notes logging, and RBAC authentication guards).
+
 
 

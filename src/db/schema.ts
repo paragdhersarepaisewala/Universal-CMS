@@ -346,6 +346,31 @@ export const blogPosts = mysqlTable('blog_posts', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
 });
 
+export const authorProfiles = mysqlTable('author_profiles', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  userId: bigint('user_id', { mode: 'number', unsigned: true }).notNull().unique(),
+  name: varchar('name', { length: 150 }).notNull(),
+  slug: varchar('slug', { length: 100 }).notNull().unique(),
+  bio: text('bio'),
+  designation: varchar('designation', { length: 100 }),
+  avatarUrl: varchar('avatar_url', { length: 500 }),
+  socialLinks: json('social_links'), // { twitter, linkedin, website }
+  isPublic: boolean('is_public').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const blogEditorialHistory = mysqlTable('blog_editorial_history', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  postId: bigint('post_id', { mode: 'number', unsigned: true }).notNull(),
+  fromStatus: varchar('from_status', { length: 30 }).notNull(),
+  toStatus: varchar('to_status', { length: 30 }).notNull(),
+  actorId: bigint('actor_id', { mode: 'number', unsigned: true }).notNull(),
+  actorName: varchar('actor_name', { length: 150 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // 23. Ecommerce Store (Products, Variants, Orders, Items, Coupons)
 export const products = mysqlTable('products', {
   id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),

@@ -3,8 +3,8 @@
 Location: `cms-core/docs/ADMIN-UI-CONTRACT.md`
 
 ```
-Contract version:   0.2.6
-cms-core version:   0.2.6
+Contract version:   0.2.8
+cms-core version:   0.2.8
 Last updated:       2026-10-26
 ```
 
@@ -736,6 +736,50 @@ Storefront & Donor endpoints:
   Donor Cancel Sub: POST /api/v1/donations/subscriptions/:id/cancel (requires donor auth and ownership verification)
 ```
 
+```
+Screen:             NEWS-01 Author Profiles & Directory Management
+Route:              /admin/blog/authors
+Permission:         blog.authors.view (listing), blog.authors.manage (updating)
+Purpose:            Manage public author credentials, editorial bios, designations, and social links
+
+List View:          GET /api/v1/admin/blog/authors
+  Fields:           id, userId, name, slug, designation, avatarUrl, isPublic, articleCount, updatedAt
+  Filter/Search:    slug, name
+
+Edit Author:        PUT /api/v1/admin/blog/authors/:userId
+  Body:             { name: string, slug: string, bio?: string, designation?: string, avatarUrl?: string, socialLinks?: Record<string, string>, isPublic?: boolean }
+  Validation:       name (1-150 chars), slug (unique, 1-100 chars lowercase hyphenated)
+  Response:         200 OK with updated AuthorProfileRecord
+
+Public Storefront Endpoints:
+  Authors Directory: GET /api/v1/blog/authors (returns active public authors with articleCount)
+  Author Profile:   GET /api/v1/blog/authors/:slug (returns public profile metadata)
+  Author Articles:  GET /api/v1/blog/authors/:slug/posts?page=1&perPage=10 (paginated published articles)
+```
+
+```
+Screen:             NEWS-02 Multi-Stage Editorial Workflow State Machine & History Ledger
+Route:              /admin/blog/posts/:id
+Permission:         blog.posts.view (view history), blog.editorial.review (submit review, approve, request changes)
+Purpose:            Enforce formal newsroom editorial state transitions and audit reviewer notes
+
+Status Transitions: POST /api/v1/admin/blog/posts/:id/transition
+  Allowed Matrix:
+    - draft:               -> [in_review, archived]
+    - in_review:           -> [changes_requested, approved, draft]
+    - changes_requested:   -> [in_review, draft]
+    - approved:            -> [published, scheduled, draft]
+    - published:           -> [archived, draft]
+    - scheduled:           -> [published, draft]
+    - archived:            -> [draft]
+  Body:             { toStatus: string, notes?: string, scheduledAt?: string }
+  Validation:       toStatus must follow allowed transitions matrix. Invalid transitions return 400 with allowed options list.
+  Side Effects:     Appends transition audit row with actorId, actorName, fromStatus, toStatus, timestamp, and notes.
+
+Audit Trail View:   GET /api/v1/admin/blog/posts/:id/history
+  Response:         200 OK with list of EditorialHistoryRecord ordered by createdAt descending
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -774,6 +818,7 @@ Storefront & Donor endpoints:
 | 0.2.5 | 0.2.5 | 2026-10-26 | H2.5 Admin Operations: dashboard statistics, system & error logs, email logs/aliases/automation triggers, Schema.org JSON-LD generation (in-api) |
 | 0.2.6 | 0.2.6 | 2026-10-26 | H2.6 Ecommerce Operations: inventory stock history ledger, manual adjustments, bulk CSV product import/export, Meta catalog feeds, abandoned cart job, and Meta CAPI (in-api) |
 | 0.2.7 | 0.2.7 | 2026-10-26 | H2.7 Recurring Donations: subscription plans, webhook charged/paused/cancelled events, automated thank-you emails, and 80G tax receipts (in-api) |
+| 0.2.8 | 0.2.8 | 2026-10-26 | H2.8 News Portal & Editorial: author directory, public author profiles with published article counts, multi-stage editorial workflow state machine, and revision history audit ledger (in-api) |
 
 
 
