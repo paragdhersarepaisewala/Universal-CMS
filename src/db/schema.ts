@@ -510,7 +510,7 @@ export const stockMovements = mysqlTable('stock_movements', {
   quantity: int('quantity').notNull(), // negative for reservation/sale, positive for restock/release
   changeType: varchar('change_type', { length: 50 }).notNull(), // reservation, release, sale, restock, adjustment
   reason: text('reason'),
-  referenceId: varchar('100', { length: 100 }), // order number or refund id
+  referenceId: varchar('reference_id', { length: 100 }), // order number or refund id
   actorId: bigint('actor_id', { mode: 'number', unsigned: true }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

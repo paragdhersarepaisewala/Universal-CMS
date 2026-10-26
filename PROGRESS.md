@@ -43,7 +43,7 @@ Status Legend:
 
 ### Roles and permissions
 - [x] Roles: owner, admin, manager, editor, support, customer (Default roles in src/rbac/definitions.ts)
-- [ ] Permission matrix editable in admin API (cms-core)
+- [x] Permission matrix editable in admin API (cms-core) - [2026-10-25 18:30 UTC+5:30] Implemented in src/routes/admin/rbac.ts (PUT /api/v1/admin/roles/:id/permissions) allowing updates to role permissions with wildcard checks, verified in tests/rbac.test.ts
 - [~] Permission matrix editor UI in admin - belongs to client repo
 - [x] Server-side permission check on every admin route and endpoint (requirePermission middleware in src/rbac/middleware.ts, tested in tests/rbac.test.ts)
 - [x] Invite staff by email with a role (POST /api/v1/admin/users/invite in src/routes/admin/rbac.ts)
@@ -160,7 +160,7 @@ Templates are drafts for the client's lawyer to review. Do not claim compliance.
 - [~] News sites: editorial policy, corrections policy, disclaimer - belongs to client repo
 - [~] Policy pages linked in the footer and at checkout, and present before payment gateway onboarding (Razorpay asks for privacy, terms, refund, shipping and contact pages) - belongs to client repo
 - [~] Consent checkbox at signup and checkout linked to the policies, consent timestamp stored - belongs to client repo
-- [ ] DPDP customer data export and deletion request processing API (cms-core)
+- [x] DPDP customer data export and deletion request processing API (cms-core) - [2026-10-25 22:10 UTC+5:30] Implemented in src/modules/store/customer-service.ts (POST /api/v1/store/customer/export-data and POST /api/v1/store/customer/delete-account) with PII anonymization, addresses/sessions/wishlist erasure, and audit logging in customer_data_requests, verified in tests/customer-accounts.test.ts
 - [~] Customer data export and deletion request flow UI - belongs to client repo
 - [~] All legal pages editable in admin, versioned, with last-updated date shown - belongs to client repo
 - [x] Legal templates marked as draft until the client confirms lawyer review (Seeded legal templates with disclaimer notices in src/content/compliance.ts)
