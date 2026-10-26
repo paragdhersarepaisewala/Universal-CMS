@@ -222,4 +222,23 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI Contract spec `STORE-07` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.4`).
   - Integration test suite in `tests/customer-accounts.test.ts` (12 real MySQL tests covering profile updates, password change, address CRUD, default toggles, wishlist, order history, reorder validation, return requests, DPDP export, DPDP deletion, admin directory, CSV export, and RBAC security).
 
+## [0.2.5] - 2026-10-26T10:45:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.5 (Admin Operations, Observability & Structured Data JSON-LD):
+  - Dashboard Service & API (`src/modules/dashboard/service.ts`, `src/routes/admin/dashboard.ts`):
+    - `GET /api/v1/admin/dashboard/stats`: consolidated administrative metrics computing total orders, revenue in paise, pending orders, average order value, product counts, low-stock threshold count, customer segment breakdown (standard, vip, wholesale), content pages and articles count, donation totals, and runtime memory/uptime. Guarded by `core.dashboard.view`.
+  - System Observability & Error Logs API (`src/routes/admin/logs.ts`):
+    - `GET /api/v1/admin/logs/system`: process memory statistics (rss, heapTotal, heapUsed, external), cpu usage microseconds, node and architecture environment, database connection pool, and background job counts (pending, completed, failed). Guarded by `core.logs.view`.
+    - `GET /api/v1/admin/logs/errors`: unified error logs across failed background jobs and failed email dispatches with pagination and source filtering (`all`, `jobs`, `email`). Guarded by `core.logs.view`.
+  - Email Logs & Automation Triggers (`src/routes/admin/email.ts`):
+    - Plural route aliases `GET /api/v1/admin/email/logs` and `POST /api/v1/admin/email/logs/:id/resend`.
+    - Automated event email configuration `GET /api/v1/admin/email/automation` and `PATCH /api/v1/admin/email/automation/:event` enabling/disabling automated notifications and updating default subject lines.
+  - Schema.org JSON-LD Generation Engine (`src/content/seo.ts`, `src/routes/content.ts`):
+    - `generateJsonLd` supporting Schema.org Organization, WebSite (with SearchAction), NewsArticle, Product (price formatted in Rupees from stored paise, in-stock/out-of-stock availability schema), and BreadcrumbList graphs.
+    - Public REST endpoints `GET /api/v1/seo/jsonld/:type` and `GET /api/v1/seo/jsonld/:type/:idOrSlug` with `application/ld+json` MIME header.
+  - Admin UI Contract specs `DASH-01`, `LOGS-01`, and `SEO-02` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.5`).
+  - Integration test suite in `tests/dashboard-logs-seo.test.ts` (11 real MySQL tests covering dashboard stats, system logs, error logs, email logs, automation triggers, and JSON-LD schema generation for Organization, WebSite, Product, Article, and BreadcrumbList).
+
+
 

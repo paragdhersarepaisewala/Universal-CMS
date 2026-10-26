@@ -194,4 +194,143 @@ ${xmlItems}
     const globalSeo = await this.getGlobalSeo();
     return globalSeo.robotsTxt;
   }
+
+  static async generateJsonLd(options: {
+    type: 'organization' | 'website' | 'article' | 'product' | 'breadcrumb';
+    idOrSlug?: string;
+    baseUrl?: string;
+    breadcrumbs?: Array<{ name: string; url: string }>;
+  }): Promise<Record<string, unknown> | null> {
+    const baseUrl = (options.baseUrl || 'http://localhost:3000').replace(/\/$/, '');
+    const { SettingsService } = await import('./settings.js');
+    const settings = await SettingsService.getSettings();
+
+    switch (options.type) {
+      case 'organization': {
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: settings.siteName,
+          description: settings.siteDescription,
+          url: baseUrl,
+          email: settings.contactEmail,
+        };
+      }
+
+      case 'website': {
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: settings.siteName,
+          url: baseUrl,
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: `${baseUrl}/search?q={search_term_string}`,
+            'query-input': 'required name=search_term_string',
+          },
+        };
+      }
+
+      case 'article': {
+        if (!options.idOrSlug) {
+          return {
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: settings.siteName,
+            publisher: {
+              '@type': 'Organization',
+              name: settings.siteName,
+              url: baseUrl,
+            },
+          };
+        }
+
+        const isNumeric = /^\d+$/.test(options.idOrSlug);
+        const { blogPosts } = await import('../db/schema.js');
+        const rows = await db
+          .select()
+          .from(blogPosts)
+          .where(isNumeric ? eq(blogPosts.id, Number(options.idOrSlug)) : eq(blogPosts.slug, options.idOrSlug))
+          .limit(1);
+
+        if (rows.length === 0) return null;
+        const post = rows[0];
+
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'NewsArticle',
+          headline: post.title,
+          description: post.excerpt || undefined,
+          datePublished: (post.publishedAt || post.createdAt).toISOString(),
+          dateModified: (post.updatedAt || post.createdAt).toISOString(),
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': `${baseUrl}/blog/${post.slug}`,
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: settings.siteName,
+            url: baseUrl,
+          },
+        };
+      }
+
+      case 'product': {
+        if (!options.idOrSlug) {
+          return {
+            '@context': 'https://schema.org',
+            '@type': 'Product',
+            name: settings.siteName,
+          };
+        }
+
+        const isNumeric = /^\d+$/.test(options.idOrSlug);
+        const { products } = await import('../db/schema.js');
+        const rows = await db
+          .select()
+          .from(products)
+          .where(isNumeric ? eq(products.id, Number(options.idOrSlug)) : eq(products.slug, options.idOrSlug))
+          .limit(1);
+
+        if (rows.length === 0) return null;
+        const prod = rows[0];
+
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: prod.name,
+          description: prod.description || undefined,
+          sku: prod.sku || undefined,
+          offers: {
+            '@type': 'Offer',
+            price: (prod.price / 100).toFixed(2),
+            priceCurrency: settings.currency || 'INR',
+            availability: prod.stockQuantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+            url: `${baseUrl}/store/products/${prod.slug}`,
+          },
+        };
+      }
+
+      case 'breadcrumb': {
+        const items = options.breadcrumbs || [
+          { name: 'Home', url: '/' },
+          { name: options.idOrSlug || 'Page', url: `/${options.idOrSlug || ''}` },
+        ];
+
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: items.map((item, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: item.name,
+            item: item.url.startsWith('http') ? item.url : `${baseUrl}${item.url.startsWith('/') ? '' : '/'}${item.url}`,
+          })),
+        };
+      }
+
+      default:
+        return null;
+    }
+  }
 }

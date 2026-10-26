@@ -1,19 +1,19 @@
 # Test Execution Report
 
-Date: 2026-10-25
+Date: 2026-10-26
 Test Framework: Vitest 2.1.9
 Runtime: Node.js 22 LTS
 Target: cms-core Headless API Engine
-Status: PASS (126 passed, 0 failed)
+Status: PASS (223 passed, 0 failed)
 
 ## Summary
 
-- Total Test Suites: 18
-- Total Tests: 126
-- Passed: 126
+- Total Test Suites: 24
+- Total Tests: 223
+- Passed: 223
 - Failed: 0
 - Skipped: 0
-- Code Coverage Target: Met (>90% on core business logic, schema, rbac, and auth)
+- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, and auth)
 
 ## Test Suites Breakdown
 
@@ -127,4 +127,49 @@ Status: PASS (126 passed, 0 failed)
     - File upload MIME type and maximum size constraints (CWE-434)
     - Prevention of self-referential redirect loops (CWE-601)
     - Scoped Bearer API token authorization (cms_live_)
+
+19. tests/store-h2-1.test.ts (28 passed)
+    - Atomic stock reservation and decrement during checkout
+    - Razorpay payment capture and webhook idempotency
+    - State machine transitions (pending_payment, confirmed, processing, shipped, delivered, cancelled)
+    - Full and partial refunds with inventory restock
+    - Order internal staff notes and status change audit ledger
+    - Background job for expired unpaid order stock release
+
+20. tests/store-h2-2.test.ts (20 passed)
+    - Indian GST 36 states and union territories calculation
+    - CGST, SGST, UTGST, IGST, and GST Compensation CESS splitting
+    - Indian Financial Year sequential invoice and credit note issuance
+    - PDFKit streaming generation for tax invoices and credit notes
+    - Cash on Delivery (COD) serviceability, max order limits, and fee calculation
+
+21. tests/shipping.test.ts (16 passed)
+    - Tiered weight shipping zones and destination matching
+    - Multi-carrier adapter interface (Manual, Fake, Shiprocket, Delhivery)
+    - Rate calculation, free shipping thresholds, and serviceability checks
+    - Waybill (AWB) generation, shipment manifestation, and cancellation
+    - Inbound status tracking webhooks with auto-fulfillment on delivery
+
+22. tests/digital-delivery.test.ts (10 passed)
+    - Digital asset management and file attachment
+    - License key pooling with atomic reservation via SELECT FOR UPDATE
+    - Tokenized secure downloads with expiry and max download limit
+    - Customer order entitlements retrieval and public license validation
+    - Automatic license key and download revocation on order refund
+
+23. tests/customer-accounts.test.ts (12 passed)
+    - Customer profile retrieval, contact updates, and communication preferences
+    - Password change with Argon2id re-hashing and session invalidation
+    - Saved addresses CRUD with single default address constraint
+    - Wishlist management and order history inspection
+    - Reorder stock verification and return request submission
+    - DPDP Act personal data export and account erasure
+
+24. tests/dashboard-logs-seo.test.ts (11 passed)
+    - Administrative consolidated dashboard metrics (revenue, orders, catalog, segments, content, system)
+    - System runtime diagnostics, memory statistics, and process uptime
+    - Unified error logs across background jobs and email delivery
+    - Email dispatch log inspection and message re-enqueueing
+    - Automated email event triggers toggling and custom subject editing
+    - Schema.org JSON-LD structured data generation for Organization, WebSite, NewsArticle, Product, and BreadcrumbList
 

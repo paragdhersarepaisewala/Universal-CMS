@@ -69,7 +69,7 @@ Status Legend:
 - [x] Per-page SEO: title, description, canonical, robots, Open Graph, Twitter card (SeoService getEntitySeo/setEntitySeo for pages, tested in tests/content.test.ts)
 - [x] Per-product SEO (SeoService getEntitySeo/setEntitySeo for product, public /api/v1/seo/product/:id and admin /api/v1/admin/seo/entity, tested in tests/news-portal.test.ts)
 - [x] Per-post and per-category SEO (SeoService getEntitySeo/setEntitySeo for post and category, public /api/v1/seo/post/:id and admin /api/v1/admin/seo/entity, tested in tests/news-portal.test.ts)
-- [ ] Structured data JSON-LD metadata generation API / helpers (cms-core)
+- [x] Structured data JSON-LD metadata generation API / helpers (cms-core) - [2026-10-26 10:45 UTC+5:30] Implemented in src/content/seo.ts generateJsonLd and public routes GET /api/v1/seo/jsonld/:type and GET /api/v1/seo/jsonld/:type/:idOrSlug returning Schema.org Organization, WebSite, NewsArticle, Product (price in INR), and BreadcrumbList graphs, verified in tests/dashboard-logs-seo.test.ts
 - [~] Structured data injection into frontend HTML - belongs to client repo
 - [x] sitemap.xml generated and listed in robots.txt (GET /api/v1/sitemap.xml and GET /api/v1/robots.txt, tested in tests/content.test.ts)
 - [x] robots.txt editable in admin (SeoService updateGlobalSeo with custom robots.txt, tested in tests/content.test.ts)
@@ -117,10 +117,10 @@ Status Legend:
 - [x] Related articles and site search (GET /api/v1/blog/posts/:slug/related and GET /api/v1/blog/posts?q=... search query param, tested in tests/news-portal.test.ts)
 
 ### Operations
-- [ ] Admin dashboard statistics API: counts, revenue, pending orders, traffic metrics (cms-core)
+- [x] Admin dashboard statistics API: counts, revenue, pending orders, traffic metrics (cms-core) - [2026-10-26 10:45 UTC+5:30] Implemented DashboardService in src/modules/dashboard/service.ts & route GET /api/v1/admin/dashboard/stats guarded by core.dashboard.view returning business revenue/orders, catalog metrics, customer segment breakdown, content, donations, and runtime memory/uptime, verified in tests/dashboard-logs-seo.test.ts
 - [~] Admin dashboard UI charts and widgets - belongs to client repo
 - [x] Settings: business info, SMTP, currency, timezone, tax, invoice numbering (SettingsService in src/content/settings.ts, tested in tests/content.test.ts)
-- [ ] Request and system error logs retrieval API (cms-core)
+- [x] Request and system error logs retrieval API (cms-core) - [2026-10-26 10:45 UTC+5:30] Implemented GET /api/v1/admin/logs/system and GET /api/v1/admin/logs/errors in src/routes/admin/logs.ts guarded by core.logs.view providing system memory/diagnostics and unified error logs across background jobs and email dispatch, verified in tests/dashboard-logs-seo.test.ts
 - [~] Error and request logs viewer in admin UI - belongs to client repo
 - [x] Backup and restore procedure documented and tested (src/scripts/backup.ts, src/scripts/restore.ts, npm run db:backup, npm run db:restore, docs/BACKUP.md, tested in tests/backup.test.ts)
 - [~] Cookie consent and privacy policy and terms pages - belongs to client repo
@@ -132,14 +132,14 @@ Status Legend:
 - [x] SMTP connection test and test-send API endpoint (POST /api/v1/admin/email/smtp/test, tested in tests/email.test.ts)
 - [~] Connection test and test-send button UI - belongs to client repo
 - [x] Email queue with retry, backoff and failure log (EmailQueueService in src/email/service.ts, tested in tests/email.test.ts)
-- [ ] Email log retrieval and resend API endpoints (cms-core)
+- [x] Email log retrieval and resend API endpoints (cms-core) - [2026-10-26 10:45 UTC+5:30] Implemented GET /api/v1/admin/email/log, GET /api/v1/admin/email/logs, and POST /api/v1/admin/email/logs/:id/resend in src/routes/admin/email.ts guarded by core.email.view and core.email.edit, verified in tests/dashboard-logs-seo.test.ts
 - [~] Email log viewer and resend button UI in admin - belongs to client repo
 - [~] Email studio: visual theme-based template editor with desktop and mobile preview - belongs to client repo
 - [~] Editable blocks: logo, header, heading, text, image, button, product list, order table, footer, social links - belongs to client repo
 - [~] Variable picker (customer name, order number, items, totals, address, receipt link, reset link, etc.) - belongs to client repo
 - [~] Send-test-to-myself, version history, reset to theme default - belongs to client repo
 - [~] Raw HTML and CSS mode restricted to the owner role (optional advanced mode) - belongs to client repo
-- [ ] Per-email on/off toggle switches and subject editors (templates seeded and editable; individual event toggle switches pending)
+- [x] Per-email on/off toggle switches and subject editors (cms-core) - [2026-10-26 10:45 UTC+5:30] Implemented GET /api/v1/admin/email/automation and PATCH /api/v1/admin/email/automation/:event in src/routes/admin/email.ts allowing admins to toggle automated event emails and customize default notification subject lines, verified in tests/dashboard-logs-seo.test.ts
 - [x] Marketing emails include unsubscribe; transactional emails do not depend on marketing consent (Unsubscribe token validation, tested in tests/email.test.ts)
 - [~] Email layouts tested in common clients with inline CSS and table layout - belongs to client repo
 - [~] SPF, DKIM and DMARC setup steps documented for the client's domain - belongs to client repo

@@ -167,13 +167,16 @@ export class BlogService {
       const query = db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
       const rows = await query;
       if (rows.length > 0) {
-        items = rows.map(r => ({
+        const dbItems = rows.map(r => ({
           ...r,
           status: r.status as BlogPostRecord['status'],
           publishedAt: r.publishedAt?.toISOString() || null,
           createdAt: r.createdAt.toISOString(),
           updatedAt: r.updatedAt.toISOString(),
         }));
+        const dbSlugs = new Set(dbItems.map(d => d.slug));
+        const defaultSeeds = inMemoryPosts.filter(p => !dbSlugs.has(p.slug));
+        items = [...dbItems, ...defaultSeeds];
         if (options?.status) {
           items = items.filter(p => p.status === options.status);
         }

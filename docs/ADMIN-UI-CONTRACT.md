@@ -3,9 +3,9 @@
 Location: `cms-core/docs/ADMIN-UI-CONTRACT.md`
 
 ```
-Contract version:   0.2.0
-cms-core version:   0.2.0
-Last updated:       2026-10-25
+Contract version:   0.2.5
+cms-core version:   0.2.5
+Last updated:       2026-10-26
 ```
 
 ## 0. What this file is
@@ -618,6 +618,59 @@ Storefront / Customer Endpoints:
   DPDP Data Export  | POST /api/v1/store/customer/export-data (returns full user data payload)
   DPDP Deletion     | POST /api/v1/store/customer/delete-account { passwordConfirm } (anonymizes PII, erases addresses/wishlist/sessions)
 ```
+### 5.27 Dashboard: Statistics & Business Intelligence (`DASH-01`)
+```
+Screen id:          DASH-01
+Route in GUI:       /admin/dashboard
+Module:             core
+Permissions:        view = core.dashboard.view
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/dashboard/stats
+  Data fields:
+    business:       totalOrders, pendingOrders, totalRevenuePaise, averageOrderValuePaise
+    catalog:        totalProducts, lowStockProducts, activeProducts
+    customers:      totalCustomers, segmentCounts (standard, vip, wholesale)
+    content:        totalPages, totalArticles
+    donations:      totalDonationsPaise, totalContributions
+    system:         uptimeSeconds, memoryUsageBytes (rss, heapTotal, heapUsed), environment, timestamp
+```
+
+### 5.28 Observability: Diagnostics & Error Logs (`LOGS-01`)
+```
+Screen id:          LOGS-01
+Route in GUI:       /admin/logs
+Module:             core
+Permissions:        view = core.logs.view, actions = core.email.edit
+
+Data loaded
+  System Info:      GET /api/v1/admin/logs/system
+  System Fields:    uptimeSeconds, nodeVersion, platform, architecture, pid, memoryBytes, cpuUsageMicros, jobsSummary
+
+  Unified Errors:   GET /api/v1/admin/logs/errors (query: page, perPage, source = all|jobs|email)
+  Error Row Fields: id, source, identifier, errorMessage, payload, failedAt
+
+  Email Dispatch:   GET /api/v1/admin/email/logs (query: page, per_page, status)
+  Email Row Fields: id, templateId, recipient, subject, status, errorMessage, attempts, sentAt, createdAt
+
+Actions:
+  Resend Email:     POST /api/v1/admin/email/logs/:id/resend | core.email.edit | re-enqueues failed/sent email
+  Process Queue:    POST /api/v1/admin/email/queue/process | core.email.settings | manually drains queued emails
+```
+
+### 5.29 SEO: Structured Data JSON-LD Generation (`SEO-02`)
+```
+Screen id:          SEO-02
+Route in GUI:       /admin/seo
+Module:             core
+Permissions:        view = core.seo.view, actions = core.seo.edit
+
+Storefront / Headless Consumer Endpoints:
+  Global Schemas:   GET /api/v1/seo/jsonld/:type (type: organization | website | breadcrumb)
+  Entity Schemas:   GET /api/v1/seo/jsonld/:type/:idOrSlug (type: article | product)
+
+Output Format:      application/ld+json Schema.org compliant structured metadata graph
+```
 
 ## 6. Completion checklist for cms-core agents
 
@@ -654,6 +707,7 @@ Storefront / Customer Endpoints:
 | 0.2.2 | 0.2.2 | 2026-10-25 | H2.3 Shipping Engine: zones, weight-based rates, partner adapters (Shiprocket, Delhivery, Manual), shipments, AWBs, live tracking, webhooks (in-api) |
 | 0.2.3 | 0.2.3 | 2026-10-25 | H2.3D Digital Delivery: digital assets, license key pools, tokenized downloads, order entitlements, revocation on refund (in-api) |
 | 0.2.4 | 0.2.4 | 2026-10-25 | H2.4 Customer Accounts: customer profiles, saved addresses, wishlist, order history, return requests, DPDP export & deletion, admin management (in-api) |
+| 0.2.5 | 0.2.5 | 2026-10-26 | H2.5 Admin Operations: dashboard statistics, system & error logs, email logs/aliases/automation triggers, Schema.org JSON-LD generation (in-api) |
 
 
 

@@ -418,92 +418,88 @@ export const adminEmailRoutes: FastifyPluginAsync = async (app: FastifyInstance)
     }
   );
 
-  // 11. GET /admin/email/log
-  app.get(
-    '/log',
-    {
-      preHandler: [authenticate, requirePermission('core.email.view')],
-      schema: {
-        description: 'View paginated email dispatch history and status logs',
-        tags: ['Admin Email'],
-        security: [{ bearerAuth: [] }],
-        querystring: Type.Object({
-          page: Type.Optional(Type.Number({ minimum: 1 })),
-          per_page: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
-          status: Type.Optional(Type.String()),
-        }),
-        response: {
-          200: Type.Object({
-            data: Type.Array(
-              Type.Object({
-                id: Type.Number(),
-                templateId: Type.Union([Type.Number(), Type.Null()]),
-                recipient: Type.String(),
-                subject: Type.String(),
-                status: Type.String(),
-                errorMessage: Type.Union([Type.String(), Type.Null()]),
-                attempts: Type.Number(),
-                sentAt: Type.Union([Type.String(), Type.Null()]),
-                createdAt: Type.String(),
-              })
-            ),
-            meta: Type.Object({
-              page: Type.Number(),
-              per_page: Type.Number(),
-              total: Type.Number(),
-              total_pages: Type.Number(),
-            }),
-          }),
-        },
-      },
-    },
-    async (request, reply) => {
-      const query = request.query as { page?: number; per_page?: number; status?: string };
-      const logs = await EmailService.listLogs({
-        page: query.page,
-        perPage: query.per_page,
-        status: query.status,
-      });
+  // 11. GET /admin/email/log and GET /admin/email/logs
+  const emailLogHandler = async (request: any, reply: any) => {
+    const query = request.query as { page?: number; per_page?: number; status?: string };
+    const logs = await EmailService.listLogs({
+      page: query.page,
+      perPage: query.per_page,
+      status: query.status,
+    });
 
-      return reply.send({
-        data: logs.data.map(l => ({
-          ...l,
-          sentAt: l.sentAt ? l.sentAt.toISOString() : null,
-          createdAt: l.createdAt.toISOString(),
-        })),
-        meta: logs.meta,
-      });
-    }
-  );
+    return reply.send({
+      data: logs.data.map(l => ({
+        ...l,
+        sentAt: l.sentAt ? l.sentAt.toISOString() : null,
+        createdAt: l.createdAt.toISOString(),
+      })),
+      meta: logs.meta,
+    });
+  };
 
-  // 12. POST /admin/email/log/:id/resend
-  app.post(
-    '/log/:id/resend',
-    {
-      preHandler: [authenticate, requirePermission('core.email.edit')],
-      schema: {
-        description: 'Re-enqueue a failed or previously sent email',
-        tags: ['Admin Email'],
-        security: [{ bearerAuth: [] }],
-        params: Type.Object({
-          id: Type.Number(),
+  const emailLogSchema = {
+    description: 'View paginated email dispatch history and status logs',
+    tags: ['Admin Email'],
+    security: [{ bearerAuth: [] }],
+    querystring: Type.Object({
+      page: Type.Optional(Type.Number({ minimum: 1 })),
+      per_page: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+      status: Type.Optional(Type.String()),
+    }),
+    response: {
+      200: Type.Object({
+        data: Type.Array(
+          Type.Object({
+            id: Type.Number(),
+            templateId: Type.Union([Type.Number(), Type.Null()]),
+            recipient: Type.String(),
+            subject: Type.String(),
+            status: Type.String(),
+            errorMessage: Type.Union([Type.String(), Type.Null()]),
+            attempts: Type.Number(),
+            sentAt: Type.Union([Type.String(), Type.Null()]),
+            createdAt: Type.String(),
+          })
+        ),
+        meta: Type.Object({
+          page: Type.Number(),
+          per_page: Type.Number(),
+          total: Type.Number(),
+          total_pages: Type.Number(),
         }),
-        response: {
-          200: Type.Object({
-            data: Type.Object({
-              success: Type.Boolean(),
-              message: Type.String(),
-            }),
-          }),
-        },
-      },
+      }),
     },
-    async (request, reply) => {
-      const { id } = request.params as { id: number };
-      const result = await EmailService.resend(Number(id));
-      return reply.send({ data: result });
-    }
-  );
+  };
+
+  app.get('/log', { preHandler: [authenticate, requirePermission('core.email.view')], schema: emailLogSchema }, emailLogHandler);
+  app.get('/logs', { preHandler: [authenticate, requirePermission('core.email.view')], schema: emailLogSchema }, emailLogHandler);
+
+  // 12. POST /admin/email/log/:id/resend and POST /admin/email/logs/:id/resend
+  const emailResendHandler = async (request: any, reply: any) => {
+    const { id } = request.params as { id: number };
+    const result = await EmailService.resend(Number(id));
+    return reply.send({ data: result });
+  };
+
+  const emailResendSchema = {
+    description: 'Re-enqueue a failed or previously sent email',
+    tags: ['Admin Email'],
+    security: [{ bearerAuth: [] }],
+    params: Type.Object({
+      id: Type.Number(),
+    }),
+    response: {
+      200: Type.Object({
+        data: Type.Object({
+          success: Type.Boolean(),
+          message: Type.String(),
+        }),
+      }),
+    },
+  };
+
+  app.post('/log/:id/resend', { preHandler: [authenticate, requirePermission('core.email.edit')], schema: emailResendSchema }, emailResendHandler);
+  app.post('/logs/:id/resend', { preHandler: [authenticate, requirePermission('core.email.edit')], schema: emailResendSchema }, emailResendHandler);
 
   // 13. POST /admin/email/queue/process
   app.post(

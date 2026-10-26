@@ -381,6 +381,80 @@ export const publicContentRoutes: FastifyPluginAsync = async (app: FastifyInstan
     }
   );
 
+  // 12b. GET /seo/jsonld/:type - Public JSON-LD structured data
+  app.get(
+    '/seo/jsonld/:type',
+    {
+      schema: {
+        description: 'Generate Schema.org JSON-LD structured data for organization, website, breadcrumb, etc.',
+        tags: ['Content'],
+        params: Type.Object({
+          type: Type.Union([
+            Type.Literal('organization'),
+            Type.Literal('website'),
+            Type.Literal('article'),
+            Type.Literal('product'),
+            Type.Literal('breadcrumb'),
+          ]),
+        }),
+        querystring: Type.Object({
+          idOrSlug: Type.Optional(Type.String()),
+          baseUrl: Type.Optional(Type.String()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { type } = req.params as { type: any };
+      const q = req.query as { idOrSlug?: string; baseUrl?: string };
+      const jsonLd = await SeoService.generateJsonLd({
+        type,
+        idOrSlug: q.idOrSlug,
+        baseUrl: q.baseUrl || `${req.protocol}://${req.hostname}`,
+      });
+      if (!jsonLd) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Entity not found for structured data' } });
+      }
+      return reply.header('Content-Type', 'application/ld+json').send(jsonLd);
+    }
+  );
+
+  // 12c. GET /seo/jsonld/:type/:idOrSlug - Public JSON-LD structured data for specific entity
+  app.get(
+    '/seo/jsonld/:type/:idOrSlug',
+    {
+      schema: {
+        description: 'Generate Schema.org JSON-LD structured data for a specific article or product',
+        tags: ['Content'],
+        params: Type.Object({
+          type: Type.Union([
+            Type.Literal('organization'),
+            Type.Literal('website'),
+            Type.Literal('article'),
+            Type.Literal('product'),
+            Type.Literal('breadcrumb'),
+          ]),
+          idOrSlug: Type.String(),
+        }),
+        querystring: Type.Object({
+          baseUrl: Type.Optional(Type.String()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { type, idOrSlug } = req.params as { type: any; idOrSlug: string };
+      const q = req.query as { baseUrl?: string };
+      const jsonLd = await SeoService.generateJsonLd({
+        type,
+        idOrSlug,
+        baseUrl: q.baseUrl || `${req.protocol}://${req.hostname}`,
+      });
+      if (!jsonLd) {
+        return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Entity not found for structured data' } });
+      }
+      return reply.header('Content-Type', 'application/ld+json').send(jsonLd);
+    }
+  );
+
   // 13. GET /settings - Public general site settings & age gate config
   app.get(
     '/settings',
