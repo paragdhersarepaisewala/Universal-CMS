@@ -4,16 +4,16 @@ Date: 2026-10-26
 Test Framework: Vitest 2.1.9
 Runtime: Node.js 22 LTS
 Target: cms-core Headless API Engine
-Status: PASS (233 passed, 0 failed)
+Status: PASS (242 passed, 0 failed)
 
 ## Summary
 
-- Total Test Suites: 25
-- Total Tests: 233
-- Passed: 233
+- Total Test Suites: 26
+- Total Tests: 242
+- Passed: 242
 - Failed: 0
 - Skipped: 0
-- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, feeds, and auth)
+- Code Coverage Target: Met (>90% on core business logic, schema, rbac, store, digital, shipping, accounts, observability, feeds, recurring donations, and auth)
 
 ## Test Suites Breakdown
 
@@ -182,5 +182,16 @@ Status: PASS (233 passed, 0 failed)
     - Meta Conversions API (CAPI) SHA-256 PII hashing and server-side event dispatching
     - Abandoned cart recovery job scanning pending orders and queueing emails
     - Administrative RBAC permissions and 403 Forbidden enforcement on inventory endpoints
+
+26. tests/donations-recurring.test.ts (9 passed)
+    - Recurring donation subscription initiation with monthly/quarterly/yearly frequencies
+    - Automated thank-you and 80G tax receipt email dispatch via EmailService
+    - Inbound subscription.charged webhook reconciliation with HMAC-SHA256 signature verification
+    - Idempotent charge deduplication on gateway_payment_id
+    - Subscription status transitions on subscription.paused and subscription.cancelled
+    - Authenticated donor recurring subscription listing and self-cancellation
+    - Admin recurring subscriptions directory and manual cancellation
+    - Strict RBAC ownership and 403 Forbidden enforcement on subscription operations
+
 
 

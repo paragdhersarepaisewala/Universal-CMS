@@ -80,6 +80,10 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'digital.manage', module: 'digital', description: 'Manage digital product files, license pools, and revoke entitlements' },
   { key: 'store.customers.view', module: 'store', description: 'View customer directory, profiles, and order history' },
   { key: 'store.customers.manage', module: 'store', description: 'Manage customer segments, staff notes, and return requests' },
+  { key: 'donations.campaigns.view', module: 'donations', description: 'View donation campaigns and contributions' },
+  { key: 'donations.campaigns.edit', module: 'donations', description: 'Create and edit donation campaigns' },
+  { key: 'donations.subscriptions.view', module: 'donations', description: 'View recurring donation subscriptions' },
+  { key: 'donations.subscriptions.manage', module: 'donations', description: 'Manage and cancel recurring donation subscriptions' },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -134,6 +138,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     'digital.manage',
     'store.customers.view',
     'store.customers.manage',
+    'donations.campaigns.view',
+    'donations.campaigns.edit',
+    'donations.subscriptions.view',
+    'donations.subscriptions.manage',
   ],
 
   manager: [

@@ -670,6 +670,37 @@ export const donations = mysqlTable('donations', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const donationSubscriptions = mysqlTable('donation_subscriptions', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  campaignId: bigint('campaign_id', { mode: 'number', unsigned: true }).notNull(),
+  donorName: varchar('donor_name', { length: 150 }).notNull(),
+  donorEmail: varchar('donor_email', { length: 255 }).notNull(),
+  donorPan: varchar('donor_pan', { length: 20 }),
+  amount: int('amount').notNull(),
+  frequency: varchar('frequency', { length: 20 }).default('monthly').notNull(),
+  subscriptionId: varchar('subscription_id', { length: 100 }).notNull().unique(),
+  planId: varchar('plan_id', { length: 100 }),
+  status: varchar('status', { length: 30 }).default('active').notNull(),
+  isAnonymous: boolean('is_anonymous').default(false).notNull(),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  nextChargeAt: timestamp('next_charge_at'),
+  cancelledAt: timestamp('cancelled_at'),
+  totalCharges: int('total_charges').default(0).notNull(),
+  totalRaised: int('total_raised').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+export const donationSubscriptionCharges = mysqlTable('donation_subscription_charges', {
+  id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+  subscriptionId: bigint('subscription_id', { mode: 'number', unsigned: true }).notNull(),
+  donationId: bigint('donation_id', { mode: 'number', unsigned: true }),
+  gatewayPaymentId: varchar('gateway_payment_id', { length: 100 }).notNull().unique(),
+  amount: int('amount').notNull(),
+  status: varchar('status', { length: 20 }).default('captured').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // 26. Shipping (Zones, Rates, Shipments)
 export const shippingZones = mysqlTable('shipping_zones', {
   id: bigint('id', { mode: 'number', unsigned: true }).primaryKey().autoincrement(),

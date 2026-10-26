@@ -59,7 +59,7 @@ const donationRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }
   );
 
-  // 3. POST /donations/donate - Make a donation (with optional 80G tax receipt request)
+  // 3. POST /donations/donate - Make a one-time donation
   fastify.post(
     '/donate',
     {
@@ -112,7 +112,70 @@ const donationRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }
   );
 
-  // 4. GET /donations/my-donations - Authenticated donor history and 80G tax receipts
+  // 4. POST /donations/subscribe - Create recurring donation subscription
+  fastify.post(
+    '/subscribe',
+    {
+      preHandler: [requireModule('donations')],
+      schema: {
+        description: 'Initiate a recurring donation subscription (monthly, quarterly, yearly)',
+        tags: ['Donations'],
+        body: Type.Object({
+          campaignSlug: Type.String(),
+          donorName: Type.String({ minLength: 1 }),
+          donorEmail: Type.String({ format: 'email' }),
+          donorPan: Type.Optional(Type.String()),
+          amount: Type.Number({ minimum: 10000 }),
+          frequency: Type.Optional(
+            Type.Union([Type.Literal('monthly'), Type.Literal('quarterly'), Type.Literal('yearly')])
+          ),
+          isAnonymous: Type.Optional(Type.Boolean()),
+          subscriptionId: Type.Optional(Type.String()),
+          initialPaymentId: Type.Optional(Type.String()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const body = req.body as Parameters<typeof DonationService.createSubscription>[0];
+      try {
+        const sub = await DonationService.createSubscription(body);
+        return reply.status(201).send({ data: sub });
+      } catch (err: unknown) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: err instanceof Error ? err.message : 'Subscription failed',
+        });
+      }
+    }
+  );
+
+  // 5. POST /donations/webhook - Inbound Razorpay subscription events webhook
+  fastify.post(
+    '/webhook',
+    {
+      preHandler: [requireModule('donations')],
+      schema: {
+        description: 'Inbound Razorpay recurring subscription webhook handler (subscription.charged, etc.)',
+        tags: ['Donations'],
+      },
+    },
+    async (req, reply) => {
+      const signature = req.headers['x-razorpay-signature'] as string | undefined;
+      try {
+        const result = await DonationService.handleSubscriptionWebhook(req.body, signature);
+        return reply.send({ success: true, data: result });
+      } catch (err: unknown) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: err instanceof Error ? err.message : 'Webhook processing failed',
+        });
+      }
+    }
+  );
+
+  // 6. GET /donations/my-donations - Authenticated donor one-time donation history and 80G receipts
   fastify.get(
     '/my-donations',
     {
@@ -128,6 +191,47 @@ const donationRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return reply.send({ data: history });
     }
   );
+
+  // 7. GET /donations/my-subscriptions - Authenticated donor recurring donation subscriptions
+  fastify.get(
+    '/my-subscriptions',
+    {
+      preHandler: [requireModule('donations'), authenticate],
+      schema: {
+        description: 'Get authenticated donor active and past recurring donation subscriptions',
+        tags: ['Donations'],
+      },
+    },
+    async (req, reply) => {
+      const user = (req as any).user;
+      const subs = await DonationService.listSubscriptions({ donorEmail: user.email });
+      return reply.send({ data: subs });
+    }
+  );
+
+  // 8. POST /donations/subscriptions/:id/cancel - Authenticated donor cancel subscription
+  fastify.post(
+    '/subscriptions/:id/cancel',
+    {
+      preHandler: [requireModule('donations'), authenticate],
+      schema: {
+        description: 'Cancel an active recurring donation subscription',
+        tags: ['Donations'],
+        params: Type.Object({ id: Type.Number() }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      const user = (req as any).user;
+      try {
+        const cancelled = await DonationService.cancelSubscription(id, user.email, false);
+        return reply.send({ data: cancelled });
+      } catch (err: any) {
+        const status = err.code === 'FORBIDDEN' ? 403 : err.code === 'NOT_FOUND' ? 404 : 400;
+        return reply.status(status).send({ error: { code: err.code || 'CANCEL_FAILED', message: err.message } });
+      }
+    }
+  );
 };
 
 export const adminDonationRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
@@ -135,7 +239,7 @@ export const adminDonationRoutes: FastifyPluginAsync = async (fastify: FastifyIn
   fastify.get(
     '/campaigns',
     {
-      preHandler: [authenticate, requirePermission('core.pages.view')],
+      preHandler: [authenticate, requirePermission(['donations.campaigns.view', 'core.pages.view'])],
       schema: {
         description: 'Admin list all donation campaigns',
         tags: ['Admin Donations'],
@@ -152,7 +256,7 @@ export const adminDonationRoutes: FastifyPluginAsync = async (fastify: FastifyIn
   fastify.post(
     '/campaigns',
     {
-      preHandler: [authenticate, requirePermission('core.pages.edit')],
+      preHandler: [authenticate, requirePermission(['donations.campaigns.edit', 'core.pages.edit'])],
       schema: {
         description: 'Create a new fundraising campaign',
         tags: ['Admin Donations'],
@@ -176,7 +280,7 @@ export const adminDonationRoutes: FastifyPluginAsync = async (fastify: FastifyIn
   fastify.get(
     '/contributions',
     {
-      preHandler: [authenticate, requirePermission('core.pages.view')],
+      preHandler: [authenticate, requirePermission(['donations.campaigns.view', 'core.pages.view'])],
       schema: {
         description: 'View all donation contributions and 80G tax receipts',
         tags: ['Admin Donations'],
@@ -188,16 +292,65 @@ export const adminDonationRoutes: FastifyPluginAsync = async (fastify: FastifyIn
       return reply.send({ data: list });
     }
   );
+
+  // Admin list subscriptions
+  fastify.get(
+    '/subscriptions',
+    {
+      preHandler: [authenticate, requirePermission(['donations.subscriptions.view', 'donations.campaigns.view', 'core.pages.view'])],
+      schema: {
+        description: 'View all recurring donation subscriptions across campaigns',
+        tags: ['Admin Donations'],
+        security: [{ bearerAuth: [] }],
+        querystring: Type.Object({
+          campaignId: Type.Optional(Type.Number()),
+          status: Type.Optional(Type.String()),
+          donorEmail: Type.Optional(Type.String()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const query = req.query as { campaignId?: number; status?: string; donorEmail?: string };
+      const subs = await DonationService.listSubscriptions(query);
+      return reply.send({ data: subs });
+    }
+  );
+
+  // Admin cancel subscription
+  fastify.post(
+    '/subscriptions/:id/cancel',
+    {
+      preHandler: [authenticate, requirePermission(['donations.subscriptions.manage', 'donations.campaigns.edit', 'core.pages.edit'])],
+      schema: {
+        description: 'Admin manually cancel a recurring donation subscription',
+        tags: ['Admin Donations'],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({ id: Type.Number() }),
+      },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: number };
+      try {
+        const cancelled = await DonationService.cancelSubscription(id, undefined, true);
+        return reply.send({ data: cancelled });
+      } catch (err: any) {
+        const status = err.code === 'NOT_FOUND' ? 404 : 400;
+        return reply.status(status).send({ error: { code: err.code || 'CANCEL_FAILED', message: err.message } });
+      }
+    }
+  );
 };
 
 export const donationModuleManifest: ModuleManifest = {
   name: 'donations',
-  version: '0.1.0',
-  description: 'Fundraising campaigns, Razorpay donations, and 80G tax receipts',
+  version: '0.2.0',
+  description: 'Fundraising campaigns, Razorpay one-time and recurring donations, 80G tax receipts, and transactional thank-you emails',
   isCore: false,
   permissions: [
-    { key: 'donations.campaigns.view', description: 'View donation campaigns' },
+    { key: 'donations.campaigns.view', description: 'View donation campaigns and contributions' },
     { key: 'donations.campaigns.edit', description: 'Create and edit donation campaigns' },
+    { key: 'donations.subscriptions.view', description: 'View recurring donation subscriptions' },
+    { key: 'donations.subscriptions.manage', description: 'Manage and cancel recurring donation subscriptions' },
   ],
   adminNav: [
     {
@@ -206,6 +359,13 @@ export const donationModuleManifest: ModuleManifest = {
       route: '/admin/donations/campaigns',
       permission: 'donations.campaigns.view',
       order: 40,
+    },
+    {
+      id: 'donation-subscriptions',
+      label: 'Recurring Donations',
+      route: '/admin/donations/subscriptions',
+      permission: 'donations.subscriptions.view',
+      order: 41,
     },
   ],
   routesPrefix: '/donations',

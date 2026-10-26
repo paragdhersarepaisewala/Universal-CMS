@@ -266,5 +266,31 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI Contract specs `STORE-08`, `STORE-09`, and `FEED-01` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.6`).
   - Integration test suite in `tests/store-inventory-feeds.test.ts` (10 real MySQL tests covering stock adjustment, backorder protection, inventory ledger, CSV export/import formula defense, Meta XML/CSV feeds, Meta CAPI SHA-256 hashing, abandoned cart job execution, and RBAC 403 enforcement).
 
+## [0.2.7] - 2026-10-26T11:35:00+05:30
+
+### Added
+- Sub-checkpoint CP-H2.7 (Fundraising: Recurring Donations via Subscriptions, Webhook Event Reconciliation, and Automated Thank-You Emails):
+  - Database schema additions via migration `0011_recurring_donations_h2_7`:
+    - Tables: `donation_subscriptions` and `donation_subscription_charges`.
+    - Columns added: `frequency` (`monthly`, `quarterly`, `yearly`), `subscription_id`, `plan_id`, `total_charges`, `total_raised`, `started_at`, `next_charge_at`, and `cancelled_at`.
+  - Recurring Donations Engine (`src/modules/donations/service.ts`):
+    - `createSubscription`: validates minimum donation amount (10000 paise / Rs 100), active campaign status, supported frequencies, and calculates future scheduled charge timestamps.
+    - `handleSubscriptionWebhook`: processes inbound webhook payloads with HMAC-SHA256 signature verification, executes idempotent charge deduplication on `gateway_payment_id`, generates sequential Indian 80G tax receipts (`80G-YYYY-HEX`), creates completed donation records, increments campaign raised totals, updates subscription counters, and dispatches automated thank-you emails. Handles `subscription.charged`, `subscription.paused`, `subscription.cancelled`, and `subscription.resumed` events.
+    - `listSubscriptions`: provides subscription history filterable by donor email, campaign, and status.
+    - `cancelSubscription`: verifies donor ownership or admin privileges before transitioning subscription status to `cancelled`.
+  - Automated Thank-You & 80G Transactional Email Dispatch:
+    - Integrated `EmailService.enqueueEmail` inside `recordDonation` and `handleSubscriptionWebhook` using event template `donation.receipt` with recipient, donor name, formatted Rupee amount, 80G receipt number, PAN, and campaign title.
+  - Storefront & Donor Endpoints:
+    - `POST /api/v1/donations/subscribe`: Public initiation of recurring donation subscription.
+    - `POST /api/v1/donations/webhook`: Inbound Razorpay subscription event callback handler.
+    - `GET /api/v1/donations/my-subscriptions`: Authenticated customer lists their recurring donations.
+    - `POST /api/v1/donations/subscriptions/:id/cancel`: Customer cancels their recurring donation subscription.
+  - Admin Endpoints:
+    - `GET /api/v1/admin/donations/subscriptions`: List all recurring donation subscriptions across campaigns.
+    - `POST /api/v1/admin/donations/subscriptions/:id/cancel`: Admin manual cancellation of subscriptions.
+    - RBAC permissions: `donations.campaigns.view`, `donations.campaigns.edit`, `donations.subscriptions.view`, `donations.subscriptions.manage`.
+  - Admin UI Contract spec `DONATE-01` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.7`).
+  - Integration test suite in `tests/donations-recurring.test.ts` (9 real MySQL tests covering subscription initiation, next charge scheduling, one-time donation thank-you emails, webhook charged processing, 80G receipt generation, idempotency deduplication, cancellation webhook handling, donor ownership verification, admin listing/cancellation, and RBAC 403 enforcement).
+
 
 

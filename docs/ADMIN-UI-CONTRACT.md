@@ -714,6 +714,28 @@ Conversions API:
   Server-Side CAPI: MetaCapiService.dispatchEvent({ eventName: 'Purchase'|'InitiateCheckout'|'AddToCart', userData, customData }) with SHA-256 hashed customer PII
 ```
 
+### 5.33 Fundraising: Recurring Donation Subscriptions & 80G Receipts (`DONATE-01`)
+```
+Screen id:          DONATE-01
+Route in GUI:       /admin/donations/subscriptions
+Module:             donations
+Permissions:        view = donations.subscriptions.view, actions = donations.subscriptions.manage
+
+Data loaded
+  Endpoint:         GET /api/v1/admin/donations/subscriptions
+  Query params:     campaignId (optional), status (active, paused, cancelled), donorEmail (optional)
+  Row fields:       id, campaignId, campaignTitle, donorName, donorEmail, donorPan, amount, frequency, subscriptionId, planId, status, totalCharges, totalRaised, startedAt, nextChargeAt, cancelledAt
+
+Actions:
+  Cancel Sub:       POST /api/v1/admin/donations/subscriptions/:id/cancel | donations.subscriptions.manage | terminates recurring donation subscription | audit donations.subscriptions.cancel
+
+Storefront & Donor endpoints:
+  Initiate Sub:     POST /api/v1/donations/subscribe { campaignSlug, donorName, donorEmail, donorPan, amount, frequency: 'monthly'|'quarterly'|'yearly', isAnonymous }
+  Webhook Handler:  POST /api/v1/donations/webhook (handles subscription.charged, subscription.paused, subscription.cancelled with HMAC-SHA256 signature verification)
+  My Subscriptions: GET /api/v1/donations/my-subscriptions (requires donor auth)
+  Donor Cancel Sub: POST /api/v1/donations/subscriptions/:id/cancel (requires donor auth and ownership verification)
+```
+
 ## 6. Completion checklist for cms-core agents
 
 - [ ] Every screen in section 4 has a full spec block, not just an index row
@@ -751,6 +773,8 @@ Conversions API:
 | 0.2.4 | 0.2.4 | 2026-10-25 | H2.4 Customer Accounts: customer profiles, saved addresses, wishlist, order history, return requests, DPDP export & deletion, admin management (in-api) |
 | 0.2.5 | 0.2.5 | 2026-10-26 | H2.5 Admin Operations: dashboard statistics, system & error logs, email logs/aliases/automation triggers, Schema.org JSON-LD generation (in-api) |
 | 0.2.6 | 0.2.6 | 2026-10-26 | H2.6 Ecommerce Operations: inventory stock history ledger, manual adjustments, bulk CSV product import/export, Meta catalog feeds, abandoned cart job, and Meta CAPI (in-api) |
+| 0.2.7 | 0.2.7 | 2026-10-26 | H2.7 Recurring Donations: subscription plans, webhook charged/paused/cancelled events, automated thank-you emails, and 80G tax receipts (in-api) |
+
 
 
 

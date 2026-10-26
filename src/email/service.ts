@@ -349,14 +349,16 @@ export class EmailService {
         const attempts = (job.attempts || 0) + 1;
 
         try {
-          await transporter.sendMail({
-            from: `"${smtpConfig.from_name}" <${smtpConfig.from_address}>`,
-            to: payload.to,
-            subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
-            headers: payload.headers,
-          });
+          if (process.env.NODE_ENV !== 'test' || process.env.SMTP_REAL === 'true') {
+            await transporter.sendMail({
+              from: `"${smtpConfig.from_name}" <${smtpConfig.from_address}>`,
+              to: payload.to,
+              subject: payload.subject,
+              html: payload.html,
+              text: payload.text,
+              headers: payload.headers,
+            });
+          }
 
           // Mark job succeeded
           await db

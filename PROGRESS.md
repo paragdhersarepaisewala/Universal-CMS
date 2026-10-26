@@ -100,11 +100,11 @@ Status Legend:
 
 ### Donation (if applicable)
 - [x] Campaigns with goal, progress bar, updates, images (DonationService, /api/v1/donations/campaigns, progressPercentage calculation, tested in tests/donations.test.ts)
-- [ ] Recurring donations via Razorpay subscriptions (one-time donations implemented; subscription plans and recurring webhooks pending)
+- [x] Recurring donations via Razorpay subscriptions - [2026-10-26 11:35 UTC+5:30] Implemented migration 0011_recurring_donations_h2_7 creating donation_subscriptions and donation_subscription_charges tables, DonationService createSubscription, handleSubscriptionWebhook (with HMAC-SHA256 signature verification, idempotency deduplication, automatic donation record + 80G receipt issuance, next charge calculation), listSubscriptions, cancelSubscription (ownership verified), endpoints POST /api/v1/donations/subscribe, POST /api/v1/donations/webhook, GET /api/v1/donations/my-subscriptions, POST /api/v1/donations/subscriptions/:id/cancel, GET /api/v1/admin/donations/subscriptions, and POST /api/v1/admin/donations/subscriptions/:id/cancel, verified in tests/donations-recurring.test.ts
 - [x] Donor management and anonymous donation option (isAnonymous masking support, tested in tests/donations.test.ts)
 - [x] Automatic receipts with required tax-exemption fields where applicable (Indian 80G tax receipt number format and PAN capture, tested in tests/donations.test.ts)
 - [x] Reports and CSV export, reconciliation with Razorpay (GET /api/v1/admin/donations/contributions, tested in tests/donations.test.ts)
-- [ ] Automated thank-you transactional email dispatch on donation completion (cms-core)
+- [x] Automated thank-you transactional email dispatch on donation completion (cms-core) - [2026-10-26 11:35 UTC+5:30] Implemented automated thank-you and 80G receipt email dispatch in DonationService.recordDonation and handleSubscriptionWebhook via EmailService.enqueueEmail with templateKey 'donation.receipt', donor name, formatted donation amount in Rupees, 80G receipt number, PAN, and campaign title, verified in tests/donations-recurring.test.ts
 - [~] Thank-you page UI - belongs to client repo
 
 ### News portal (if applicable)

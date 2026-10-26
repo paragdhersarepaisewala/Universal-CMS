@@ -1410,6 +1410,64 @@ export async function runMigrations(): Promise<void> {
       );
 
       console.log('[Migration] 0010_stock_movements_h2_6 completed.');
+    }
+
+    // Check 0011_recurring_donations_h2_7
+    const [rows11] = await connection.query<RowDataPacket[]>(
+      'SELECT id FROM _migrations WHERE name = ?',
+      ['0011_recurring_donations_h2_7']
+    );
+
+    if (rows11.length === 0) {
+      console.log('[Migration] Applying 0011_recurring_donations_h2_7...');
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS donation_subscriptions (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          campaign_id BIGINT UNSIGNED NOT NULL,
+          donor_name VARCHAR(150) NOT NULL,
+          donor_email VARCHAR(255) NOT NULL,
+          donor_pan VARCHAR(20) NULL,
+          amount INT NOT NULL,
+          frequency VARCHAR(20) NOT NULL DEFAULT 'monthly',
+          subscription_id VARCHAR(100) NOT NULL UNIQUE,
+          plan_id VARCHAR(100) NULL,
+          status VARCHAR(30) NOT NULL DEFAULT 'active',
+          is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+          started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          next_charge_at TIMESTAMP NULL,
+          cancelled_at TIMESTAMP NULL,
+          total_charges INT NOT NULL DEFAULT 0,
+          total_raised INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_sub_campaign (campaign_id),
+          INDEX idx_sub_email (donor_email),
+          INDEX idx_sub_status (status),
+          CONSTRAINT fk_sub_campaign FOREIGN KEY (campaign_id) REFERENCES donation_campaigns (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS donation_subscription_charges (
+          id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          subscription_id BIGINT UNSIGNED NOT NULL,
+          donation_id BIGINT UNSIGNED NULL,
+          gateway_payment_id VARCHAR(100) NOT NULL UNIQUE,
+          amount INT NOT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'captured',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_charge_sub (subscription_id),
+          CONSTRAINT fk_charge_sub FOREIGN KEY (subscription_id) REFERENCES donation_subscriptions (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+
+      await connection.query(
+        'INSERT INTO _migrations (name) VALUES (?)',
+        ['0011_recurring_donations_h2_7']
+      );
+
+      console.log('[Migration] 0011_recurring_donations_h2_7 completed.');
     } else {
       console.log('[Migration] Database is up to date.');
     }
