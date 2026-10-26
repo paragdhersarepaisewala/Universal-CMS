@@ -45,18 +45,34 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 
   // CSRF Defense for cookie-based transport on state-changing HTTP methods
   if (source === 'cookie' && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method.toUpperCase())) {
-    const customHeader = request.headers['x-requested-with'] || request.headers['x-csrf-token'] || request.headers['x-cms-client'];
-    const origin = request.headers['origin'];
-    const host = request.headers['host'];
+    const { CsrfService } = await import('./csrf.js');
+    const cookieCsrf = CsrfService.extractCookieToken(request);
+    const headerCsrf = CsrfService.extractHeaderToken(request);
 
-    const isSameOrigin = origin && host && origin.includes(host);
-    if (!customHeader && !isSameOrigin) {
-      return reply.status(403).send({
-        error: {
-          code: 'CSRF_VALIDATION_FAILED',
-          message: 'Cross-Site Request Forgery protection: State-changing requests using cookie authentication must include custom header (X-Requested-With or X-CSRF-Token).',
-        },
-      });
+    // If double-submit token is supplied in header, verify cryptographically against cookie
+    if (cookieCsrf && headerCsrf) {
+      if (!CsrfService.verifyToken(headerCsrf, cookieCsrf)) {
+        return reply.status(403).send({
+          error: {
+            code: 'CSRF_TOKEN_MISMATCH',
+            message: 'Cross-Site Request Forgery protection: Invalid CSRF token.',
+          },
+        });
+      }
+    } else {
+      const customHeader = request.headers['x-requested-with'] || request.headers['x-csrf-token'] || request.headers['x-cms-client'];
+      const origin = request.headers['origin'];
+      const host = request.headers['host'];
+
+      const isSameOrigin = origin && host && origin.includes(host);
+      if (!customHeader && !isSameOrigin) {
+        return reply.status(403).send({
+          error: {
+            code: 'CSRF_VALIDATION_FAILED',
+            message: 'Cross-Site Request Forgery protection: State-changing requests using cookie authentication must include custom header (X-Requested-With or X-CSRF-Token).',
+          },
+        });
+      }
     }
   }
 

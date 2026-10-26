@@ -428,4 +428,29 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       return reply.send({ data: request.user });
     }
   );
+
+  // 11. GET /csrf-token - Issue double-submit CSRF token
+  fastify.get(
+    '/csrf-token',
+    {
+      schema: {
+        description: 'Issue double-submit CSRF token for browser sessions',
+        tags: ['Auth'],
+        response: {
+          200: Type.Object({
+            data: Type.Object({
+              csrfToken: Type.String(),
+            }),
+          }),
+        },
+      },
+    },
+    async (_request, reply) => {
+      const { CsrfService } = await import('../auth/csrf.js');
+      const token = CsrfService.generateToken();
+      reply.header('Set-Cookie', `csrf_token=${token}; Path=/; SameSite=Lax`);
+      return reply.send({ data: { csrfToken: token } });
+    }
+  );
 };
+

@@ -1,6 +1,22 @@
+import sharp from 'sharp';
 import { db } from '../db/index.js';
 import { media, contentBlocks } from '../db/schema.js';
 import { eq, desc } from 'drizzle-orm';
+
+export interface ProcessedImageResult {
+  format: string;
+  width: number;
+  height: number;
+  aspectRatio: string;
+  sizeBytes: number;
+  buffer: Buffer;
+  mimeType: string;
+  variants?: {
+    thumb: { width: number; height: number; sizeBytes: number; buffer: Buffer; mimeType: string };
+    medium: { width: number; height: number; sizeBytes: number; buffer: Buffer; mimeType: string };
+    large?: { width: number; height: number; sizeBytes: number; buffer: Buffer; mimeType: string };
+  };
+}
 
 export interface MediaItem {
   id: number;
@@ -199,5 +215,81 @@ export class MediaService {
     }
 
     return true;
+  }
+
+  static async transformImageToWebp(
+    inputBuffer: Buffer,
+    options?: { quality?: number; generateVariants?: boolean }
+  ): Promise<ProcessedImageResult> {
+    const quality = options?.quality || 80;
+    const image = sharp(inputBuffer);
+    const meta = await image.metadata();
+
+    const originalWidth = meta.width || 1200;
+    const originalHeight = meta.height || 800;
+    const aspectRatio = `${originalWidth}:${originalHeight}`;
+
+    // Convert primary image to WebP
+    const webpBuffer = await sharp(inputBuffer)
+      .webp({ quality })
+      .toBuffer();
+
+    const result: ProcessedImageResult = {
+      format: 'webp',
+      width: originalWidth,
+      height: originalHeight,
+      aspectRatio,
+      sizeBytes: webpBuffer.length,
+      buffer: webpBuffer,
+      mimeType: 'image/webp',
+    };
+
+    if (options?.generateVariants !== false) {
+      const thumbBuffer = await sharp(inputBuffer)
+        .resize({ width: 300, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
+      const thumbMeta = await sharp(thumbBuffer).metadata();
+
+      const mediumBuffer = await sharp(inputBuffer)
+        .resize({ width: 800, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
+      const mediumMeta = await sharp(mediumBuffer).metadata();
+
+      result.variants = {
+        thumb: {
+          width: thumbMeta.width || 300,
+          height: thumbMeta.height || 200,
+          sizeBytes: thumbBuffer.length,
+          buffer: thumbBuffer,
+          mimeType: 'image/webp',
+        },
+        medium: {
+          width: mediumMeta.width || 800,
+          height: mediumMeta.height || 600,
+          sizeBytes: mediumBuffer.length,
+          buffer: mediumBuffer,
+          mimeType: 'image/webp',
+        },
+      };
+
+      if (originalWidth > 1200) {
+        const largeBuffer = await sharp(inputBuffer)
+          .resize({ width: 1600, withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+        const largeMeta = await sharp(largeBuffer).metadata();
+        result.variants.large = {
+          width: largeMeta.width || 1600,
+          height: largeMeta.height || 1000,
+          sizeBytes: largeBuffer.length,
+          buffer: largeBuffer,
+          mimeType: 'image/webp',
+        };
+      }
+    }
+
+    return result;
   }
 }

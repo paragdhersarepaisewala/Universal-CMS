@@ -201,4 +201,86 @@ export const adminMediaRoutes: FastifyPluginAsync = async (app: FastifyInstance)
       }
     }
   );
+
+  // 5. POST /admin/media/transform - Server-side image transformation to WebP & responsive variants
+  app.post(
+    '/transform',
+    {
+      preHandler: [authenticate, requirePermission('core.media.upload')],
+      schema: {
+        description: 'Transform an image to WebP and generate responsive dimensions',
+        tags: ['Admin Media'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          imageBase64: Type.String({ minLength: 1 }),
+          quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+          generateVariants: Type.Optional(Type.Boolean()),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { imageBase64, quality = 80, generateVariants = true } = req.body as {
+        imageBase64: string;
+        quality?: number;
+        generateVariants?: boolean;
+      };
+
+      try {
+        const inputBuffer = Buffer.from(imageBase64, 'base64');
+        const result = await MediaService.transformImageToWebp(inputBuffer, {
+          quality,
+          generateVariants,
+        });
+
+        return reply.send({
+          data: {
+            format: result.format,
+            width: result.width,
+            height: result.height,
+            aspectRatio: result.aspectRatio,
+            sizeBytes: result.sizeBytes,
+            mimeType: result.mimeType,
+            webpBase64: result.buffer.toString('base64'),
+            variants: result.variants
+              ? {
+                  thumb: {
+                    width: result.variants.thumb.width,
+                    height: result.variants.thumb.height,
+                    sizeBytes: result.variants.thumb.sizeBytes,
+                    mimeType: result.variants.thumb.mimeType,
+                    base64: result.variants.thumb.buffer.toString('base64'),
+                  },
+                  medium: {
+                    width: result.variants.medium.width,
+                    height: result.variants.medium.height,
+                    sizeBytes: result.variants.medium.sizeBytes,
+                    mimeType: result.variants.medium.mimeType,
+                    base64: result.variants.medium.buffer.toString('base64'),
+                  },
+                  ...(result.variants.large
+                    ? {
+                        large: {
+                          width: result.variants.large.width,
+                          height: result.variants.large.height,
+                          sizeBytes: result.variants.large.sizeBytes,
+                          mimeType: result.variants.large.mimeType,
+                          base64: result.variants.large.buffer.toString('base64'),
+                        },
+                      }
+                    : {}),
+                }
+              : undefined,
+          },
+        });
+      } catch (err: unknown) {
+        return reply.status(400).send({
+          error: {
+            code: 'IMAGE_TRANSFORM_FAILED',
+            message: err instanceof Error ? err.message : 'Image transformation failed',
+          },
+        });
+      }
+    }
+  );
 };
+

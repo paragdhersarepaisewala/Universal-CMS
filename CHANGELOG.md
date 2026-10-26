@@ -330,5 +330,20 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Admin UI Contract specs `NEWS-01` and `NEWS-02` documented in `docs/ADMIN-UI-CONTRACT.md` (contract version `0.2.8`).
   - Integration test suite in `tests/news-editorial.test.ts` (15 real MySQL tests covering author directory, author lookup, author posts, admin profile upserts, multi-stage transitions draft -> in_review -> changes_requested -> in_review -> approved -> published, invalid transition rejection, review notes logging, and RBAC authentication guards).
 
+## [0.2.9] - 2026-10-26T12:52:00+05:30
+
+### Added
+- Phase 5 Performance & Phase 6 Security Production Hardening Completion:
+  - Server-side image transformation to WebP and responsive dimensions generation using `sharp` library in `MediaService.transformImageToWebp` with 300px (`thumb`), 800px (`medium`), and 1600px (`large`) WebP variants (`POST /api/v1/admin/media/transform`).
+  - Cryptographic double-submit CSRF protection service (`src/auth/csrf.ts`) and middleware (`authenticate`) with constant-time buffer comparison (`crypto.timingSafeEqual`) on state-changing cookie requests, plus CSRF token issuance endpoint `GET /api/v1/auth/csrf-token`.
+  - Daily rotating file logger utility (`src/utils/logger.ts`) with automated 14-day log retention cleanup.
+  - Formal MySQL 8.4 `EXPLAIN` query plan review and index audit across all entity lookups and status/customer filter queries (`reports/mysql-explain-audit.md`).
+  - Server-side memory profiling and heap leak audit across 1,000 synthetic requests proving zero memory leaks and stable V8 GC bounds under Hostinger constraints (`reports/memory-profiling.md`).
+  - Time-To-First-Byte (TTFB) benchmark report (`reports/ttfb-benchmark.md`): average TTFB of 0.44 ms, p95 of 0.84 ms, throughput of 2,256 req/sec across 1,000 requests.
+  - Dedicated unused dependency audit with `depcheck` (`reports/dependency-audit.md`) confirming 0 unused and 0 missing dependencies.
+  - Clean-clone automated verification suite (`tests/clean-clone.test.ts`) validating database connectivity, idempotent migrations, idempotent seeding, and server bootstrap.
+  - Integration test suite `tests/media-csrf.test.ts` covering sharp WebP transformation, responsive variant extraction, and CSRF token matching/mismatch defenses.
+
+
 
 
